@@ -59,8 +59,11 @@ function parseFunctionParams(parameters, env){
 
 function parseVariableDeclaration(vardecl, env) {
     for (let i = 0; i < vardecl.declarations.length; i++) {
-        if (vardecl.init.type === 'ArrayExpression') {
-            let right = substitute(vardecl.declarations[i].init, env);
+        if (vardecl.declarations[i].init.type === 'ArrayExpression') {
+            let right = vardecl.declarations[i].init.elements;
+            for(let i=0; i<right.length; i=i+1){
+                right[i]= substitute(right[i], env);
+            }
             vardecl.declarations[i].init = right;
             env[vardecl.declarations[i].id.name] = right;
         }
@@ -69,12 +72,10 @@ function parseVariableDeclaration(vardecl, env) {
             vardecl.declarations[i].init = right;
             env[vardecl.declarations[i].id.name] = right;
         }
-        return null;
     }
+    return null;
+
 }
-
-
-
 
 function parseWhileStatement(program, env){
     //let cond = {line: bodyElement.loc.start.line, type: bodyElement.type, name:undefined, condition: bodyElement.value, value:undefined};
@@ -109,15 +110,24 @@ function parseReturnStatement(retStatement, env) {
 }
 
 function parseAssignmentExpression(assignExp, env) {
-    let name= assignExp.left.name;
-    let value= substitute(assignExp.right, env);
-    value=substitute(value, env);
-    env[name]= value;
-    if(isFuncArgument(name))
+    let name;
+    if (assignExp.left.type === 'MemberExpression') {
+        name = assignExp.left.object.name;
+        assignExp.left.property = substitute(assignExp.left.property);
+        assignExp.right = substitute(assignExp.right, env);
+        env[name] = assignExp.right;
+    }
+    else {
+        name = assignExp.left.name;
+        assignExp.right = substitute(assignExp.right, env);
+        env[name] = assignExp.right;
+    }
+    if (isFuncArgument(name))
         return assignExp;
     else
         return null;
 }
+
 
 function deepCopyEnv(oldEnv){
     let newEnv=[];
@@ -133,10 +143,22 @@ function substitute (expr, env){
         return BinaryExpSub(expr, env);
     case 'Identifier':
         return identifierSub(expr, env);
+    case 'MemberExpression':
+        return memberExpSub(expr, env);
     case 'Literal':
         return expr;
     }
 
+}
+function memberExpSub(expr, env){
+    let name=expr.object.name;
+    expr.property=substitute(expr.property,env);
+    if (!isFuncArgument(name)) {
+        let tmp= env[name];
+        return tmp[expr.property.value];
+    }
+    else
+        return expr;
 }
 
 function BinaryExpSub( expr, env){
