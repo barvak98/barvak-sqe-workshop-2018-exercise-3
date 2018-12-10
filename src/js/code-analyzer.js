@@ -3,7 +3,7 @@ import * as esprima from 'esprima';
 
 
 let params=[];
-
+let argsValues=[];
 const parseCode = (codeToParse) => {
     return esprima.parseScript(codeToParse);
 };
@@ -52,7 +52,7 @@ function parseFunctionDeclaration(func , env) {
 function parseFunctionParams(parameters, env){
     for(let i=0; i<parameters.length; i=i+1){
         params.push(parameters[i].name);
-        env[parameters[i].name]= undefined;
+        env[parameters[i].name]= argsValues[i].right;
     }
 }
 
@@ -115,7 +115,7 @@ function parseAssignmentExpression(assignExp, env) {
         name = assignExp.left.object.name;
         assignExp.left.property = substitute(assignExp.left.property);
         assignExp.right = substitute(assignExp.right, env);
-        env[name] = assignExp.right;
+        env[name][assignExp.left.property.value] = assignExp.right;
     }
     else {
         name = assignExp.left.name;
@@ -182,8 +182,9 @@ function identifierSub (expr, env){
     }
     return expr;
 }
-function parseProgram(program, env){
+function parseProgram(program, argsVals,env){
     let body=program.body;
+    argsValues= argsVals.body[0].expression.expressions; // returns as Expression statement
     program.body=parseBody(body, env);
     return program;
 }
