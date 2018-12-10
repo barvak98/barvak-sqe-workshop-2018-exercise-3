@@ -74,6 +74,8 @@ function parseVariableDeclaration(vardecl, env) {
 }
 
 
+
+
 function parseWhileStatement(program, env){
     //let cond = {line: bodyElement.loc.start.line, type: bodyElement.type, name:undefined, condition: bodyElement.value, value:undefined};
     if(program.body.type==='BlockStatement')
