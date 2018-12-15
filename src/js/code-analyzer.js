@@ -11,7 +11,6 @@ const parseCode = (codeToParse) => {
     return esprima.parseScript(codeToParse);
 };
 
-
 export {parseCode, parseProgram };
 
 function parseFunctionDeclaration(func , env) {
@@ -31,20 +30,20 @@ function colorTest ( program){
     return code;
 }
 function checkLineColor(line){
-    let output =line;
+    let final =line;
     if (line.includes('else if (')) {
-        let newLine = line.substring(0, line.lastIndexOf(')'));
-        output = '<span style="background-color:' + colors[colorIndx++] + ';"> '+ newLine +' </span>';
+        let newLine = line.substring(0, line.lastIndexOf(')')+1);
+        final = '<span style="background-color:' + colors[colorIndx++] + ';"> '+ newLine +' </span>';
     }
     else if (line.includes('if (')) {
-        let newLine = line.substring(0, line.lastIndexOf(')'));
-        output = '<span style="background-color:' + colors[colorIndx++] + ';"> '+ newLine +' </span>';
+        let newLine = line.substring(0, line.lastIndexOf(')')+1);
+        final = '<span style="background-color:' + colors[colorIndx++] + ';"> '+ newLine +' </span>';
     }
     else if(line.includes('while (')) {
-        let newLine = line.substring(0, line.lastIndexOf(')'));
-        output = '<span style="background-color:' + colors[colorIndx++] + ';"> '+ newLine +' </span>';
+        let newLine = line.substring(0, line.lastIndexOf(')')+1);
+        final = '<span style="background-color:' + colors[colorIndx++] + ';"> '+ newLine +' </span>';
     }
-    return '\n' + output + '\n';
+    return '\n' +final+ '\n';
 
 }
 function parseFunctionParams(parameters, env){
@@ -86,12 +85,6 @@ function parseWhileStatement(program, env){
         color='green';
     colors[colorIndx]=color;
     colorIndx=colorIndx+1;
-    /*let color ='red';
-        if(value){
-            color='green';
-        }
-        program.test.color = color;
-        */
     if(program.body.type==='BlockStatement') {
         program.body.body = parseBody(program.body.body, newEnv);
         program.body.body = program.body.body.filter(exp => exp);
@@ -112,17 +105,18 @@ function parseIfStatement(bodyElement, isElseIf, env) {
     let color ='red';
     if(value)
         color='green';
-    //bodyElement.test.color = color;
     colors[colorIndx]=color;
     colorIndx=colorIndx+1;
-
+    return ifHelper(bodyElement, isElseIf, newEnv);
+}
+function ifHelper(bodyElement, isElseIf, newEnv){
     if (bodyElement.consequent.type === 'BlockStatement') {
-        bodyElement.consequent.body = parseBody(bodyElement.consequent.body, env);
+        bodyElement.consequent.body = parseBody(bodyElement.consequent.body, newEnv);
         let z= bodyElement.consequent.body.filter(exp=>exp);
         bodyElement.consequent.body=z;
     }
     else
-        bodyElement.consequent = parseBody([bodyElement.consequent], env)[0];
+        bodyElement.consequent = parseBody([bodyElement.consequent], newEnv)[0];
     let typeAlt = bodyElement.alternate.type;
     if (typeAlt === 'IfStatement')
         bodyElement.alternate = parseIfStatement(bodyElement.alternate, true, newEnv);
@@ -132,6 +126,7 @@ function parseIfStatement(bodyElement, isElseIf, env) {
         bodyElement.alternate.body = k;
     }
     return bodyElement;
+
 }
 
 function parseExpressionStatement(bodyElement, env){
