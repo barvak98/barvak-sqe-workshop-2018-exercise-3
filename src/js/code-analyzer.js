@@ -2,47 +2,18 @@ import * as esprima from 'esprima';
 import * as escodegen from 'escodegen';
 
 
+let colors ={};
+let colorIndx =0;
 let params=[];
 let argsValues=[];
+
 const parseCode = (codeToParse) => {
     return esprima.parseScript(codeToParse);
 };
 
-const makeTable  =(code) => {
-    let jsonData = esprima.parseScript(code ,{loc:true});
-    return parseBody(jsonData.body);
 
-};
-export {parseCode, makeTable, makeDoubleArray, makeTableHTML, parseProgram };
-function  makeDoubleArray( array) {
-    let doubleArray = [];
-    for (let i = 0; i < array.length; i++) {
-        let tmpArr = [array[i].line, array[i].type, array[i].name, array[i].condition, array[i].value];
-        doubleArray.push(tmpArr);
-    }
-    return doubleArray;
-}
+export {parseCode, parseProgram };
 
-function makeTableHTML(myArray) {
-    var result = '<table border=1>';
-    result+='<thead><tr>' +
-        '<th>Line</th>'+
-        '<th>Type</th>'+
-        '<th>Name</th>'+
-        '<th>Condition</th>'+
-        '<th>Value</th>'+
-        '</tr></thead>';
-    for(let i=0; i<myArray.length; i++) {
-        result += '<tr>';
-        for(let j=0; j<myArray[i].length; j++){
-            result += '<td>'+myArray[i][j]+'</td>';
-        }
-        result += '</tr>';
-    }
-    result += '</table>';
-
-    return result;
-}
 function parseFunctionDeclaration(func , env) {
     parseFunctionParams(func.params, env);
     func.body.body=parseBody(func.body.body, env);
@@ -50,6 +21,32 @@ function parseFunctionDeclaration(func , env) {
     return func;
 }
 
+function colorTest ( program){
+    let code ='<pre>';
+    let lines = program.split('\n');
+    for(let i=0; i<lines.length; i++){
+        code = code +checkLineColor(lines[i]);
+    }
+    code = code +'</pre>';
+    return code;
+}
+function checkLineColor(line){
+    let output =line;
+    if (line.includes('else if (')) {
+        let newLine = line.substring(0, line.lastIndexOf(')'));
+        output = '<span style="background-color:' + colors[colorIndx++] + ';"> '+ newLine +' </span>';
+    }
+    else if (line.includes('if (')) {
+        let newLine = line.substring(0, line.lastIndexOf(')'));
+        output = '<span style="background-color:' + colors[colorIndx++] + ';"> '+ newLine +' </span>';
+    }
+    else if(line.includes('while (')) {
+        let newLine = line.substring(0, line.lastIndexOf(')'));
+        output = '<span style="background-color:' + colors[colorIndx++] + ';"> '+ newLine +' </span>';
+    }
+    return '\n' + output + '\n';
+
+}
 function parseFunctionParams(parameters, env){
     for(let i=0; i<parameters.length; i=i+1){
         params.push(parameters[i].name);
@@ -85,10 +82,16 @@ function parseWhileStatement(program, env){
     let val=substituteEval(test1,newEnv);
     let value = eval(escodegen.generate(val));
     let color ='red';
-    if(value){
+    if(value)
         color='green';
-    }
-    program.test.color = color;
+    colors[colorIndx]=color;
+    colorIndx=colorIndx+1;
+    /*let color ='red';
+        if(value){
+            color='green';
+        }
+        program.test.color = color;
+        */
     if(program.body.type==='BlockStatement') {
         program.body.body = parseBody(program.body.body, newEnv);
         program.body.body = program.body.body.filter(exp => exp);
@@ -101,7 +104,7 @@ function parseWhileStatement(program, env){
 
 function parseIfStatement(bodyElement, isElseIf, env) {
     let newEnv = deepCopyEnv(env);
-    bodyElement.test =parseBody(bodyElement.test);
+    //bodyElement.test =parseBody(bodyElement.test);
     bodyElement.test= substitute(bodyElement.test, newEnv);
     let test1=JSON.parse(JSON.stringify(bodyElement.test));
     let val=substituteEval(test1,newEnv);
@@ -109,7 +112,10 @@ function parseIfStatement(bodyElement, isElseIf, env) {
     let color ='red';
     if(value)
         color='green';
-    bodyElement.test.color = color;
+    //bodyElement.test.color = color;
+    colors[colorIndx]=color;
+    colorIndx=colorIndx+1;
+
     if (bodyElement.consequent.type === 'BlockStatement') {
         bodyElement.consequent.body = parseBody(bodyElement.consequent.body, env);
         let z= bodyElement.consequent.body.filter(exp=>exp);
@@ -129,7 +135,11 @@ function parseIfStatement(bodyElement, isElseIf, env) {
 }
 
 function parseExpressionStatement(bodyElement, env){
-    return parseBody([bodyElement.expression], env);
+    let k =parseBody([bodyElement.expression], env);
+    if(k===null)
+        return k;
+    else
+        return k[0];
 }
 
 function parseReturnStatement(retStatement, env) {
@@ -262,6 +272,7 @@ function parseProgram(program, argsVals,env){
         else
             program.body[i]= parseBody([program.body[i]], env)[0];
     }
+    program= fixStructure(program);
     return program;
 }
 function parseBody ( program , env ) {
@@ -271,6 +282,24 @@ function parseBody ( program , env ) {
     if(program.length==1&& program[0]===null)
         program=null;
     return program;
+}
+function fixStructure (program){
+    let escode = escodegen.generate(program);
+    // let parsedCode ='';
+    /*  for(let i=0; i<escode.length; i++){
+        if ('[' === escode.charAt(i)) {
+            let k = escode.substring(i, escode.length);
+            let arr = k.substring(1, k.indexOf(']'));
+            parsedCode = parsedCode +arr.replace(/\s/, '');
+            i = i + k.indexOf(']');
+        }
+        else
+            escode = escode + escode.charAt(i);
+    }
+
+*/
+    colorIndx =0;
+    return colorTest(escode);
 }
 function parsePrimitiveExps (program , env ){
     if (program.type === 'VariableDeclaration') {
