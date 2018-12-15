@@ -1,5 +1,5 @@
 import * as esprima from 'esprima';
-//import * as escodegen from 'escodegen';
+import * as escodegen from 'escodegen';
 
 
 let params=[];
@@ -45,7 +45,8 @@ function makeTableHTML(myArray) {
 }
 function parseFunctionDeclaration(func , env) {
     parseFunctionParams(func.params, env);
-    func=parseBody(func.body.body, env);
+    func.body.body=parseBody(func.body.body, env);
+    func.body.body=func.body.body.filter(exp=>exp);
     return func;
 }
 
@@ -78,25 +79,52 @@ function parseVariableDeclaration(vardecl, env) {
 }
 
 function parseWhileStatement(program, env){
-    //let cond = {line: bodyElement.loc.start.line, type: bodyElement.type, name:undefined, condition: bodyElement.value, value:undefined};
-    if(program.body.type==='BlockStatement')
-        return (parseBody(program.body.body), env);
-    else
-        return (parseBody([program.body]), env);
+    let newEnv = deepCopyEnv(env);
+    program.test= substitute(program.test, newEnv);
+    let test1=JSON.parse(JSON.stringify(program.test));
+    let val=substituteEval(test1,newEnv);
+    let value = eval(escodegen.generate(val));
+    let color ='red';
+    if(value){
+        color='green';
+    }
+    program.test.color = color;
+    if(program.body.type==='BlockStatement') {
+        program.body.body = parseBody(program.body.body, newEnv);
+        program.body.body = program.body.body.filter(exp => exp);
+    }
+    else {
+        program.body = (parseBody([program.body], newEnv))[0];
+    }
+    return program;
 }
 
 function parseIfStatement(bodyElement, isElseIf, env) {
     let newEnv = deepCopyEnv(env);
     bodyElement.test =parseBody(bodyElement.test);
-    if (bodyElement.consequent.type === 'BlockStatement')
-        bodyElement.consequent = parseBody(bodyElement.consequent.body, env);
+    bodyElement.test= substitute(bodyElement.test, newEnv);
+    let test1=JSON.parse(JSON.stringify(bodyElement.test));
+    let val=substituteEval(test1,newEnv);
+    let value = eval(escodegen.generate(val));
+    let color ='red';
+    if(value)
+        color='green';
+    bodyElement.test.color = color;
+    if (bodyElement.consequent.type === 'BlockStatement') {
+        bodyElement.consequent.body = parseBody(bodyElement.consequent.body, env);
+        let z= bodyElement.consequent.body.filter(exp=>exp);
+        bodyElement.consequent.body=z;
+    }
     else
-        bodyElement.consequent = parseBody([bodyElement.consequent], env);
+        bodyElement.consequent = parseBody([bodyElement.consequent], env)[0];
     let typeAlt = bodyElement.alternate.type;
     if (typeAlt === 'IfStatement')
         bodyElement.alternate = parseIfStatement(bodyElement.alternate, true, newEnv);
-    else
-        bodyElement.alternate = parseBody(bodyElement.alternate.body, newEnv);
+    else {
+        bodyElement.alternate.body = parseBody(bodyElement.alternate.body, newEnv);
+        let k = bodyElement.alternate.body.filter(exp => exp);
+        bodyElement.alternate.body = k;
+    }
     return bodyElement;
 }
 
@@ -140,30 +168,54 @@ function deepCopyEnv(oldEnv){
 function substitute (expr, env){
     switch (expr.type) {
     case 'BinaryExpression':
-        return BinaryExpSub(expr, env);
+        return BinaryExpSub(expr, env, false);
     case 'Identifier':
-        return identifierSub(expr, env);
+        return identifierSub(expr, env, false);
     case 'MemberExpression':
-        return memberExpSub(expr, env);
+        return memberExpSub(expr, env, false);
     case 'Literal':
         return expr;
     }
 
 }
-function memberExpSub(expr, env){
+function substituteEval (expr, env){
+    switch (expr.type) {
+    case 'BinaryExpression':
+        return BinaryExpSub(expr, env, true);
+    case 'Identifier':
+        return identifierSub(expr, env, true);
+    case 'MemberExpression':
+        return memberExpSub(expr, env, true);
+    case 'Literal':
+        return expr;
+    }
+
+}
+function memberExpSub(expr, env, ifEval){
     let name=expr.object.name;
-    expr.property=substitute(expr.property,env);
-    if (!isFuncArgument(name)) {
+    if(ifEval) {
+        expr.property = substituteEval(expr.property, env);
+    }
+    else
+        expr.property = substitute(expr.property, env);
+    if (!isFuncArgument(name)|| ifEval) {
         let tmp= env[name];
         return tmp[expr.property.value];
     }
-    else
+    else {
         return expr;
+    }
 }
 
-function BinaryExpSub( expr, env){
-    expr.left=substitute(expr.left, env);
-    expr.right=substitute(expr.right, env);
+function BinaryExpSub( expr, env, IfEval){
+    if(IfEval){
+        expr.left = substituteEval(expr.left, env);
+        expr.right = substituteEval(expr.right, env);
+    }
+    else {
+        expr.left = substitute(expr.left, env);
+        expr.right = substitute(expr.right, env);
+    }
     return expr;
 }
 
@@ -174,24 +226,50 @@ function isFuncArgument(name) {
     return true;
 }
 
-function identifierSub (expr, env){
-    if (!isFuncArgument(expr.name)) {
+function identifierSub (expr, env, isEval){
+    if (!isFuncArgument(expr.name)|| isEval) {
         if (env[expr.name] !== undefined) {
             return env[expr.name];
         }
     }
-    return expr;
+    else {
+        return expr;
+    }
+}
+function parseGlobal(global, env){
+    for (let i = 0; i < global.declarations.length; i++) {
+        if (global.declarations[i].init.type === 'ArrayExpression') {
+            let right = global.declarations[i].init.elements;
+            for(let i=0; i<right.length; i=i+1){
+                right[i]= substitute(right[i], env);
+            }
+            global.declarations[i].init = right;
+            env[global.declarations[i].id.name] = right;
+        }
+        else {
+            let right = substitute(global.declarations[i].init, env);
+            global.declarations[i].init = right;
+            env[global.declarations[i].id.name] = right;
+        }
+    }
+    return global;
 }
 function parseProgram(program, argsVals,env){
-    let body=program.body;
     argsValues= argsVals.body[0].expression.expressions; // returns as Expression statement
-    program.body=parseBody(body, env);
+    for(let i=0; i<program.body.length; i++){
+        if(program.body[i].type==='VariableDeclaration')
+            program.body[i]= parseGlobal(program.body[i], env);
+        else
+            program.body[i]= parseBody([program.body[i]], env)[0];
+    }
     return program;
 }
 function parseBody ( program , env ) {
     for (let i = 0; i < program.length; i++) {
         program[i]=(parsePrimitiveExps(program[i], env));
     }
+    if(program.length==1&& program[0]===null)
+        program=null;
     return program;
 }
 function parsePrimitiveExps (program , env ){

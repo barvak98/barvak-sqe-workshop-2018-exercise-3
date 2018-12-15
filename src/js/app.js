@@ -1,6 +1,7 @@
 import $ from 'jquery';
 import {parseCode , parseProgram} from './code-analyzer';
 import * as esprima from 'esprima';
+import * as escodegen from 'escodegen';
 
 
 if(typeof document !== 'undefined')
@@ -11,7 +12,9 @@ if(typeof document !== 'undefined')
             let env =[];
             let parsedCode = parseCode(codeToParse);
             let newParsedCode = parseProgram(parsedCode, esprima.parseScript(argValue),env);
-            $('#parsedCode').val(JSON.stringify(newParsedCode, null, 2));
+            let code= escodegen.generate(newParsedCode);
+            //   code=<pre> +code+  </pre>
+            $('#parsedCode').val(JSON.stringify(code, null, 2));
 
         });
 
