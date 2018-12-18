@@ -11,7 +11,7 @@ if(typeof document !== 'undefined')
             let env =[];
             let parsedCode = parseCode(codeToParse);
             let newParsedCode = parseProgram(parsedCode, esprima.parseScript(argValue),env);
-            console.log(newParsedCode);
+
             $('#parsedCode').html(newParsedCode);
 
         });
