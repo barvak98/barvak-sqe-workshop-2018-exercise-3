@@ -1,139 +1,311 @@
 import assert from 'assert';
-import {makeTable, parseCode, makeDoubleArray, makeTableHTML} from '../src/js/code-analyzer';
-
+import {parseCode, parseProgram} from '../src/js/code-analyzer';
+import * as esprima from 'esprima';
 describe('The javascript parser', () => {
-    it('is parsing an empty function correctly', () => {
+    it('is parsing the 1th test correctly', () => {
         assert.deepEqual(
-            JSON.stringify(parseCode('')),
-            '{"type":"Program","body":[],"sourceType":"script"}'
-        );
-    });
-
-    it('is parsing a simple variable declaration correctly', () => {
-        assert.deepEqual(
-            JSON.stringify(parseCode('let a = 1;')),
-            '{"type":"Program","body":[{"type":"VariableDeclaration","declarations":[{"type":"VariableDeclarator","id":{"type":"Identifier","name":"a"},"init":{"type":"Literal","value":1,"raw":"1"}}],"kind":"let"}],"sourceType":"script"}'
-        );
-    });
-});
-
-
-describe('The javascript parser', () => {
-    it('is parsing a simple  function correctly', () => {
-        assert.deepEqual(
-            JSON.stringify(parseCode('function average(x,y){ let avg=(x+y)/2; return avg;}', {loc:true})),
-            '{"type":"Program","body":[{"type":"FunctionDeclaration","id":{"type":"Identifier","name":"average"},"params":[{"type":"Identifier","name":"x"},{"type":"Identifier","name":"y"}],"body":{"type":"BlockStatement","body":[{"type":"VariableDeclaration","declarations":[{"type":"VariableDeclarator","id":{"type":"Identifier","name":"avg"},"init":{"type":"BinaryExpression","operator":"/","left":{"type":"BinaryExpression","operator":"+","left":{"type":"Identifier","name":"x"},"right":{"type":"Identifier","name":"y"}},"right":{"type":"Literal","value":2,"raw":"2"}}}],"kind":"let"},{"type":"ReturnStatement","argument":{"type":"Identifier","name":"avg"}}]},"generator":false,"expression":false,"async":false}],"sourceType":"script"}'
-        );
-    });
-});
-describe('The javascript parser', () => {
-    it('is parsing a simple  function correctly', () => {
-        assert.deepEqual(
-            JSON.stringify(makeTable('function binarySearch(X, V, n){\n' +
-                '    let low, high, mid;\n' +
-                '    low = 0;\n' +
-                '    high = n - 1;\n' +
-                '    while (low <= high) {\n' +
-                '        mid = (low + high)/2;\n' +
-                '        if (X < V[mid])\n' +
-                '            high = mid - 1;\n' +
-                '        else if (X > V[mid])\n' +
-                '            low = mid + 1;\n' +
-                '        else\n' +
-                '            return mid;\n' +
-                '    }\n' +
-                '    return -1;\n' +
-                '}', {loc:true})),
-            '[{"line":1,"type":"FunctionDeclaration","name":"binarySearch"},{"line":1,"type":"variable declaration","name":"X"},{"line":1,"type":"variable declaration","name":"V"},{"line":1,"type":"variable declaration","name":"n"},{"line":2,"type":"variable declaration","name":"low"},{"line":2,"type":"variable declaration","name":"high"},{"line":2,"type":"variable declaration","name":"mid"},{"line":3,"type":"AssignmentExpression","name":"low","value":"0"},{"line":4,"type":"AssignmentExpression","name":"high","value":"n - 1"},{"line":5,"type":"WhileStatement"},{"line":6,"type":"AssignmentExpression","name":"mid","value":"(low + high) / 2"},{"line":7,"type":"If Statement","condition":"X < V[mid]"},{"line":8,"type":"AssignmentExpression","name":"high","value":"mid - 1"},{"line":9,"type":"ElseIf Statement","condition":"X > V[mid]"},{"line":10,"type":"AssignmentExpression","name":"low","value":"mid + 1"},{"line":12,"type":"ReturnStatement","value":"mid"},{"line":14,"type":"ReturnStatement","value":"-1"}]'
-        );
-    });
-});
-describe('My  Make Double Array func ', () => {
-    it('is parsing a simple  function correctly', () => {
-        assert.deepEqual(
-            JSON.stringify(makeDoubleArray(makeTable('function average(x,y){let z=1;return (x+y+z)/3;}'))),
-            '[[1,"FunctionDeclaration","average","",""],[1,"variable declaration","x","",""],[1,"variable declaration","y","",""],[1,"variable declaration","z","",""],[1,"ReturnStatement","","","(x + y + z) / 3"]]'
-        );
-    });
-});
-describe('My  Make Double Array func ', () => {
-    it('is parsing a simple function correctly', () => {
-        assert.deepEqual(
-            JSON.stringify(makeDoubleArray(makeTable('function max(x,y){\n' +
-                '    if(x>y)\n' +
-                'return x;\n' +
-                'else if(x=y){\n' +
-                'return y;\n' +
-                '}\n' +
-                'else\n' +
-                'return x+y;\n' +
-                '}'))),
-            '[[1,"FunctionDeclaration","max","",""],[1,"variable declaration","x","",""],[1,"variable declaration","y","",""],[2,"If Statement","","x > y",""],[3,"ReturnStatement","","","x"],[4,"ElseIf Statement","","x = y",""],[8,"ReturnStatement","","","x + y"]]'
-        );
-    });
-});
-describe('My  Make Double Array func ', () => {
-    it('is parsing a simple function correctly', () => {
-        assert.deepEqual(
-            JSON.stringify(makeDoubleArray(makeTable('function whileFunc(z){while (z<4) z=z+1; for(let i=0; i<z; i++){z=z-1;}}'))),
-            '[[1,"FunctionDeclaration","whileFunc","",""],[1,"variable declaration","z","",""],[1,"WhileStatement","","",""],[1,"AssignmentExpression","z","","z + 1"],[1,"For Statement","","let i = 0;i < zi++",""],[1,"AssignmentExpression","z","","z - 1"]]'
-        );
-    });
-});
-describe('My  Make Double Array func ', () => {
-    it('is parsing a simple function correctly', () => {
-        assert.deepEqual(
-            JSON.stringify(makeDoubleArray(makeTable('function whileFunc(z){while (z<4) z=z+1; for(let i=0; i<z; i++)z=z-1;}'))),
-            '[[1,"FunctionDeclaration","whileFunc","",""],[1,"variable declaration","z","",""],[1,"WhileStatement","","",""],[1,"AssignmentExpression","z","","z + 1"],[1,"For Statement","","let i = 0;i < zi++",""],[1,"AssignmentExpression","z","","z - 1"]]'
-        );
-    });
-});
-
-
-
-describe('My  Make HTML table func ', () => {
-    it('is parsing a simple function correctly', () => {
-        assert.deepEqual(
-            JSON.stringify(makeTableHTML(makeDoubleArray(makeTable('function func (a, b){ return a+b; }')))),
-            '"<table border=1><thead><tr><th>Line</th><th>Type</th><th>Name</th><th>Condition</th><th>Value</th></tr></thead><tr><td>1</td><td>FunctionDeclaration</td><td>func</td><td></td><td></td></tr><tr><td>1</td><td>variable declaration</td><td>a</td><td></td><td></td></tr><tr><td>1</td><td>variable declaration</td><td>b</td><td></td><td></td></tr><tr><td>1</td><td>ReturnStatement</td><td></td><td></td><td>a + b</td></tr></table>"'
-        );
-    });
-});
-describe('My  Make HTML table func ', () => {
-    it('is parsing a simple function correctly', () => {
-        assert.deepEqual(
-            JSON.stringify(makeTableHTML(makeDoubleArray(makeTable('function min (x,y){\n' +
+            parseProgram(parseCode('function foo(x,y){\n' +
                 'if(x<y)\n' +
-                'return x;\n' +
-                'else\n' +
-                'return y;\n' +
-                '}')))),
-            '"<table border=1><thead><tr><th>Line</th><th>Type</th><th>Name</th><th>Condition</th><th>Value</th></tr></thead><tr><td>1</td><td>FunctionDeclaration</td><td>min</td><td></td><td></td></tr><tr><td>1</td><td>variable declaration</td><td>x</td><td></td><td></td></tr><tr><td>1</td><td>variable declaration</td><td>y</td><td></td><td></td></tr><tr><td>2</td><td>If Statement</td><td></td><td>x < y</td><td></td></tr><tr><td>3</td><td>ReturnStatement</td><td></td><td></td><td>x</td></tr><tr><td>5</td><td>ReturnStatement</td><td></td><td></td><td>y</td></tr></table>"'
-        );
-    });
-});
-describe('My  Make HTML table func ', () => {
-    it('is parsing a simple function correctly', () => {
-        assert.deepEqual(
-            JSON.stringify(makeTableHTML(makeDoubleArray(makeTable('function func (a, b){ return a+b; }')))),
-            '"<table border=1><thead><tr><th>Line</th><th>Type</th><th>Name</th><th>Condition</th><th>Value</th></tr></thead><tr><td>1</td><td>FunctionDeclaration</td><td>func</td><td></td><td></td></tr><tr><td>1</td><td>variable declaration</td><td>a</td><td></td><td></td></tr><tr><td>1</td><td>variable declaration</td><td>b</td><td></td><td></td></tr><tr><td>1</td><td>ReturnStatement</td><td></td><td></td><td>a + b</td></tr></table>"'
-        );
-    });
-});
-describe('My  Make HTML table func ', () => {
-    it('is parsing a simple function correctly', () => {
-        assert.deepEqual(
-            JSON.stringify(makeTableHTML(makeDoubleArray(makeTable('function diff( x, y){\n' +
-                'let dif;\n' +
-                'if(x>y){\n' +
-                'dif= x-y;\n' +
+                '{\n' +
+                'return 5;\n' +
                 '}\n' +
-                'else\n' +
-                'dif= y-x;\n' +
-                'return dif;\n' +
-                '}')))),
-            '"<table border=1><thead><tr><th>Line</th><th>Type</th><th>Name</th><th>Condition</th><th>Value</th></tr></thead><tr><td>1</td><td>FunctionDeclaration</td><td>diff</td><td></td><td></td></tr><tr><td>1</td><td>variable declaration</td><td>x</td><td></td><td></td></tr><tr><td>1</td><td>variable declaration</td><td>y</td><td></td><td></td></tr><tr><td>2</td><td>variable declaration</td><td>dif</td><td></td><td></td></tr><tr><td>3</td><td>If Statement</td><td></td><td>x > y</td><td></td></tr><tr><td>7</td><td>AssignmentExpression</td><td>dif</td><td></td><td>y - x</td></tr><tr><td>8</td><td>ReturnStatement</td><td></td><td></td><td>dif</td></tr></table>"'
+                '}\n'), esprima.parseScript('1,2'),[]),
+            '<pre>\n' +
+            'function foo(x, y) {\n' +
+            '\n' +
+            '<span style="background-color:green;">     if (x < y) </span>\n' +
+            '\n' +
+            '        return 5;\n' +
+            '\n' +
+            '    }\n' +
+            '\n' +
+            '}\n' +
+            '</pre>'
         );
     });
 });
 
+
+describe('The javascript parser', () => {
+    it('is parsing the second test correctly', () => {
+        assert.deepEqual(
+            parseProgram(parseCode('function foo(arr){\n' +
+                '   if(arr[0]<10)\n' +
+                '{\n' +
+                'if(arr[1]<0)\n' +
+                'return x;\n' +
+                '}\n' +
+                '}\n'), esprima.parseScript('[1,2,3]'),[]),
+            '<pre>\n' +
+            'function foo(arr) {\n' +
+            '\n' +
+            '<span style="background-color:green;">     if (arr[0] < 10) </span>\n' +
+            '\n' +
+            '<span style="background-color:red;">         if (arr[1] < 0) </span>\n' +
+            '\n' +
+            '            return;\n' +
+            '\n' +
+            '    }\n' +
+            '\n' +
+            '}\n' +
+            '</pre>'
+        );
+    });
+});
+
+
+
+describe('The javascript parser', () => {
+    it('is parsing the 3 test correctly', () => {
+        assert.deepEqual(
+            parseProgram(parseCode('function foo(x, arr){\n' +
+                '   x= arr;\n' +
+                '   if(x[1]<10)\n' +
+                'return 5;\n' +
+                '}\n'), esprima.parseScript('1, [1,2,3,4]'),[]),
+            '<pre>\n' +
+            'function foo(x, arr) {\n' +
+            '\n' +
+            '    (x = [\n' +
+            '\n' +
+            '        1,\n' +
+            '\n' +
+            '        2,\n' +
+            '\n' +
+            '        3,\n' +
+            '\n' +
+            '        4\n' +
+            '\n' +
+            '    ])\n' +
+            '\n' +
+            '<span style="background-color:green;">     if (x[1] < 10) </span>\n' +
+            '\n' +
+            '        return 5;\n' +
+            '\n' +
+            '}\n' +
+            '</pre>'
+        );
+    });
+});
+describe('The javascript parser', () => {
+    it('is parsing the 4th test correctly', () => {
+        assert.deepEqual(
+            parseProgram(parseCode('function foo(x, y, z){\n' +
+                '    let a = x + 1;\n' +
+                '    let b = a + y;\n' +
+                '    let c = 0;\n' +
+                '    \n' +
+                '    while (a < z) {\n' +
+                '        c = a + b;\n' +
+                '        z = c * 2;\n' +
+                '    }\n' +
+                '    \n' +
+                '    return z;\n' +
+                '}\n'), esprima.parseScript('1, 2, 3'),[]),
+            '<pre>\n' +
+            'function foo(x, y, z) {\n' +
+            '\n' +
+            '<span style="background-color:green;">     while (x + 1 < z) </span>\n' +
+            '\n' +
+            '        (z = (x + 1 + (x + 1 + y)) * 2)\n' +
+            '\n' +
+            '    }\n' +
+            '\n' +
+            '    return z;\n' +
+            '\n' +
+            '}\n' +
+            '</pre>'
+        );
+    });
+});
+
+describe('The javascript parser', () => {
+    it('is parsing the 5th test correctly', () => {
+        assert.deepEqual(
+            parseProgram(parseCode('let a =1;\n' +
+                'function foo(x, y, z){\n' +
+                'if(a<3)\n' +
+                'x=x+1;\n' +
+                '}\n'), esprima.parseScript('1, 2, 3'),[]),
+            '<pre>\n' +
+            'let a = 1;\n' +
+            '\n' +
+            'function foo(x, y, z) {\n' +
+            '\n' +
+            '<span style="background-color:green;">     if (1 < 3) </span>\n' +
+            '\n' +
+            '        (x = x + 1)\n' +
+            '\n' +
+            '}\n' +
+            '</pre>'
+        );
+    });
+});
+
+describe('The javascript parser', () => {
+    it('is parsing the 6th test correctly', () => {
+        assert.deepEqual(
+            parseProgram(parseCode('let a =1;\n' +
+                'function foo(x, y, z){\n' +
+                'if(a<3)\n' +
+                'x=x+1;\n' +
+                'else\n' +
+                'x=x+2;\n' +
+                '}'), esprima.parseScript('1,2,3'),[]),
+            '<pre>\n' +
+            'let a = 1;\n' +
+            '\n' +
+            'function foo(x, y, z) {\n' +
+            '\n' +
+            '<span style="background-color:green;">     if (1 < 3) </span>\n' +
+            '\n' +
+            '        x = x + 1\n' +
+            '\n' +
+            '    else\n' +
+            '\n' +
+            '        x = x + 2;\n' +
+            '\n' +
+            '}\n' +
+            '</pre>'
+        );
+    });
+});
+
+describe('The javascript parser', () => {
+    it('is parsing the 7th test correctly', () => {
+        assert.deepEqual(
+            parseProgram(parseCode('let a=[1,2,3,4];\n' +
+                'function f (){\n' +
+                'let b=[1];\n' +
+                'let arr1=a;\n' +
+                'if(arr1[1]<4)\n' +
+                '{\n' +
+                'return 5;\n' +
+                '}\n' +
+                'else{\n' +
+                'return 9;\n' +
+                '}\n' +
+                '}'), esprima.parseScript(''),[]),
+            '<pre>\n' +
+            'let a = [\n' +
+            '\n' +
+            '    1,\n' +
+            '\n' +
+            '    2,\n' +
+            '\n' +
+            '    3,\n' +
+            '\n' +
+            '    4\n' +
+            '\n' +
+            '];\n' +
+            '\n' +
+            'function f() {\n' +
+            '\n' +
+            '<span style="background-color:green;">     if (2 < 4) </span>\n' +
+            '\n' +
+            '        return 5;\n' +
+            '\n' +
+            '    } else {\n' +
+            '\n' +
+            '        return 9;\n' +
+            '\n' +
+            '    }\n' +
+            '\n' +
+            '}\n' +
+            '</pre>'
+        );
+    });
+});
+
+describe('The javascript parser', () => {
+    it('is parsing the 8th test correctly', () => {
+        assert.deepEqual(
+            parseProgram(parseCode('function f (x, a){\n' +
+                'a[1]=5;\n' +
+                'while (x<8)\n' +
+                'x=x+1;\n' +
+                '}\n'), esprima.parseScript('2, [1,2]'),[]),
+            '<pre>\n' +
+            'function f(x, a) {\n' +
+            '\n' +
+            '    (a[1] = 5)\n' +
+            '\n' +
+            '<span style="background-color:green;">     while (x < 8) </span>\n' +
+            '\n' +
+            '        (x = x + 1)\n' +
+            '\n' +
+            '}\n' +
+            '</pre>'
+        );
+    });
+});
+
+describe('The javascript parser', () => {
+    it('is parsing the 9th test correctly', () => {
+        assert.deepEqual(
+            parseProgram(parseCode('let a=[1,2,3,4];\n' +
+                'function f (){\n' +
+                'let b=[1];\n' +
+                'let arr1=a;\n' +
+                'if(arr1[1]<4)\n' +
+                '{\n' +
+                'return 5;\n' +
+                '}\n' +
+                'else if (arr1[1]>7){\n' +
+                'return 9;\n' +
+                '}\n' +
+                '}'), esprima.parseScript(''),[]),
+            '<pre>\n' +
+            'let a = [\n' +
+            '\n' +
+            '    1,\n' +
+            '\n' +
+            '    2,\n' +
+            '\n' +
+            '    3,\n' +
+            '\n' +
+            '    4\n' +
+            '\n' +
+            '];\n' +
+            '\n' +
+            'function f() {\n' +
+            '\n' +
+            '<span style="background-color:green;">     if (2 < 4) </span>\n' +
+            '\n' +
+            '        return 5;\n' +
+            '\n' +
+            '<span style="background-color:red;">     } else if (2 > 7) </span>\n' +
+            '\n' +
+            '        return 9;\n' +
+            '\n' +
+            '    }\n' +
+            '\n' +
+            '}\n' +
+            '</pre>'
+        );
+    });
+});
+
+
+describe('The javascript parser', () => {
+    it('is parsing the 10th test correctly', () => {
+        assert.deepEqual(
+            parseProgram(parseCode('function f (x, arr){\n' +
+                'x=arr;\n' +
+                '}'), esprima.parseScript('1, [1,2]'),[]),
+            '<pre>\n' +
+            'function f(x, arr) {\n' +
+            '\n' +
+            '    (x = [\n' +
+            '\n' +
+            '        1,\n' +
+            '\n' +
+            '        2\n' +
+            '\n' +
+            '    ])\n' +
+            '\n' +
+            '}\n' +
+            '</pre>'
+        );
+    });
+});

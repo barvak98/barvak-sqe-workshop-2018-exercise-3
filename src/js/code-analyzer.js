@@ -49,7 +49,7 @@ function checkLineColor(line){
 function parseFunctionParams(parameters, env){
     for(let i=0; i<parameters.length; i=i+1){
         params.push(parameters[i].name);
-        env[parameters[i].name]= argsValues[i].right;
+        env[parameters[i].name]= argsValues[i];
     }
 }
 
@@ -110,26 +110,25 @@ function parseIfStatement(bodyElement, isElseIf, env) {
     colorIndx=colorIndx+1;
     return ifHelper(bodyElement, isElseIf, newEnv);
 }
-function ifHelper(bodyElement, isElseIf, newEnv){
+function ifHelper(bodyElement, isElseIf, newEnv) {
     if (bodyElement.consequent.type === 'BlockStatement') {
         bodyElement.consequent.body = parseBody(bodyElement.consequent.body, newEnv);
-        let z= bodyElement.consequent.body.filter(exp=>exp);
-        bodyElement.consequent.body=z;
+        let z = bodyElement.consequent.body.filter(exp => exp);         bodyElement.consequent.body = z;
     }
     else
         bodyElement.consequent = parseBody([bodyElement.consequent], newEnv)[0];
-    if(bodyElement.alternate!=null) {
+    if (bodyElement.alternate !== null) {
         let typeAlt = bodyElement.alternate.type;
         if (typeAlt === 'IfStatement')
             bodyElement.alternate = parseIfStatement(bodyElement.alternate, true, newEnv);
         else {
-            bodyElement.alternate.body = parseBody(bodyElement.alternate.body, newEnv);
+            if(bodyElement.alternate.type=== 'BlockStatement')
+                bodyElement.alternate.body = parseBody(bodyElement.alternate.body, newEnv);
+            else
+                bodyElement.alternate.body = parseBody([bodyElement.alternate], newEnv);
             let k = bodyElement.alternate.body.filter(exp => exp);
-            bodyElement.alternate.body = k;
-        }
-    }
+            bodyElement.alternate.body = k;         } }
     return bodyElement;
-
 }
 
 function parseExpressionStatement(bodyElement, env){
@@ -149,27 +148,41 @@ function parseAssignmentExpression(assignExp, env) {
     let name;
     if (assignExp.left.type === 'MemberExpression') {
         name = assignExp.left.object.name;
-        assignExp.left.property = substitute(assignExp.left.property);
-        if(assignExp.right.type == 'MemberExpression')
-        {
-            assignExp.right = substituteEval(assignExp.right, env);
-            env[name].elements[assignExp.left.property.value] = assignExp.right;
-        }
-        else {
-            assignExp.right = substitute(assignExp.right, env);
-            env[name].elements[assignExp.left.property.value] = assignExp.right;
-        }
-
+        AssignmentLeftMemberExp(assignExp, env, name);
     }
     else {
         name = assignExp.left.name;
-        assignExp.right = substitute(assignExp.right, env);
-        env[name] = assignExp.right;
+        AssignmentLeftNormal(assignExp, env, name);
     }
     if (isFuncArgument(name))
         return assignExp;
     else
         return null;
+
+}
+function AssignmentLeftMemberExp(assignExp, env, name){
+
+    assignExp.left.property = substitute(assignExp.left.property);
+    // if(assignExp.right.type == 'MemberExpression')
+    // {
+    //     assignExp.right = substituteEval(assignExp.right, env);
+    //     env[name].elements[assignExp.left.property.value] = assignExp.right;
+    // }
+    // else {
+    assignExp.right = substitute(assignExp.right, env);
+    env[name].elements[assignExp.left.property.value] = assignExp.right;
+    // }
+
+}
+function AssignmentLeftNormal (assignExp, env, name){
+    if(assignExp.right.type =='MemberExpression'|| (assignExp.right.type=='Identifier'&& isFuncArgument(assignExp.right.name)  &&env[assignExp.right.name].type=='ArrayExpression' ))
+    {
+        assignExp.right = substituteEval(assignExp.right, env);
+    }
+    else {
+        assignExp.right = substitute(assignExp.right, env);
+    }
+    env[name] = assignExp.right;
 }
 
 
@@ -260,10 +273,10 @@ function identifierSub (expr, env, isEval){
 function parseGlobal(global, env){
     for (let i = 0; i < global.declarations.length; i++) {
         if (global.declarations[i].init.type === 'ArrayExpression') {
-            let right = global.declarations[i].init.elements;
-            for(let i=0; i<right.length; i=i+1){
-                right[i]= substitute(right[i], env);
-            }
+            let right = global.declarations[i].init;
+            // for(let i=0; i<right.length; i=i+1){
+            //     right[i]= substitute(right[i], env);
+            // }
             global.declarations[i].init = right;
             env[global.declarations[i].id.name] = right;
         }
@@ -278,15 +291,28 @@ function parseGlobal(global, env){
 function parseProgram(program, argsVals,env){
     colors=[];
     colorIndx=0;
-    argsValues= argsVals.body[0].expression.expressions; // returns as Expression statement
-    for(let i=0; i<program.body.length; i++){
-        if(program.body[i].type==='VariableDeclaration')
-            program.body[i]= parseGlobal(program.body[i], env);
+    params=[];
+    argsValues=[];
+    defArgs(argsVals);
+    for (let i = 0; i < program.body.length; i++) {
+        if (program.body[i].type === 'VariableDeclaration')
+            program.body[i] = parseGlobal(program.body[i], env);
         else
-            program.body[i]= parseBody([program.body[i]], env)[0];
+            program.body[i] = parseBody([program.body[i]], env)[0];
     }
-    program= fixStructure(program);
-    return program;
+    program= fixStructure(program);     return program;
+}
+function defArgs (argsVals){
+    if (argsVals.body.length===0){
+        argsValues=[];
+    }else if(argsVals.body.length===1) {
+        if (argsVals.body[0].expression.expressions === undefined) {
+            argsValues = [argsVals.body[0].expression];
+        }
+        else {
+            argsValues = argsVals.body[0].expression.expressions; // returns as Expression statement
+        }
+    }
 }
 function parseBody ( program , env ) {
     for (let i = 0; i < program.length; i++) {
@@ -298,19 +324,6 @@ function parseBody ( program , env ) {
 }
 function fixStructure (program){
     let escode = escodegen.generate(program);
-    // let parsedCode ='';
-    /*  for(let i=0; i<escode.length; i++){
-        if ('[' === escode.charAt(i)) {
-            let k = escode.substring(i, escode.length);
-            let arr = k.substring(1, k.indexOf(']'));
-            parsedCode = parsedCode +arr.replace(/\s/, '');
-            i = i + k.indexOf(']');
-        }
-        else
-            escode = escode + escode.charAt(i);
-    }
-
-*/
     colorIndx =0;
     return colorTest(escode);
 }
