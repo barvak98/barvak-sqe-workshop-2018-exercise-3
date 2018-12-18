@@ -2,7 +2,7 @@ import * as esprima from 'esprima';
 import * as escodegen from 'escodegen';
 
 
-let colors ={};
+let colors =[];
 let colorIndx =0;
 let params=[];
 let argsValues=[];
@@ -61,8 +61,9 @@ function parseVariableDeclaration(vardecl, env) {
             for(let i=0; i<right.length; i=i+1){
                 right[i]= substitute(right[i], env);
             }
-            vardecl.declarations[i].init = right;
-            env[vardecl.declarations[i].id.name] = right;
+            vardecl.declarations[i].init.elements = right;
+            let tmp = JSON.parse(JSON.stringify(vardecl.declarations[i].init));
+            env[vardecl.declarations[i].id.name] = tmp;
         }
         else {
             let right = substitute(vardecl.declarations[i].init, env);
@@ -117,13 +118,15 @@ function ifHelper(bodyElement, isElseIf, newEnv){
     }
     else
         bodyElement.consequent = parseBody([bodyElement.consequent], newEnv)[0];
-    let typeAlt = bodyElement.alternate.type;
-    if (typeAlt === 'IfStatement')
-        bodyElement.alternate = parseIfStatement(bodyElement.alternate, true, newEnv);
-    else {
-        bodyElement.alternate.body = parseBody(bodyElement.alternate.body, newEnv);
-        let k = bodyElement.alternate.body.filter(exp => exp);
-        bodyElement.alternate.body = k;
+    if(bodyElement.alternate!=null) {
+        let typeAlt = bodyElement.alternate.type;
+        if (typeAlt === 'IfStatement')
+            bodyElement.alternate = parseIfStatement(bodyElement.alternate, true, newEnv);
+        else {
+            bodyElement.alternate.body = parseBody(bodyElement.alternate.body, newEnv);
+            let k = bodyElement.alternate.body.filter(exp => exp);
+            bodyElement.alternate.body = k;
+        }
     }
     return bodyElement;
 
@@ -138,7 +141,7 @@ function parseExpressionStatement(bodyElement, env){
 }
 
 function parseReturnStatement(retStatement, env) {
-    retStatement = substitute(retStatement.argument, env);
+    retStatement.argument = substitute(retStatement.argument, env);
     return retStatement;
 }
 
@@ -147,8 +150,16 @@ function parseAssignmentExpression(assignExp, env) {
     if (assignExp.left.type === 'MemberExpression') {
         name = assignExp.left.object.name;
         assignExp.left.property = substitute(assignExp.left.property);
-        assignExp.right = substitute(assignExp.right, env);
-        env[name][assignExp.left.property.value] = assignExp.right;
+        if(assignExp.right.type == 'MemberExpression')
+        {
+            assignExp.right = substituteEval(assignExp.right, env);
+            env[name].elements[assignExp.left.property.value] = assignExp.right;
+        }
+        else {
+            assignExp.right = substitute(assignExp.right, env);
+            env[name].elements[assignExp.left.property.value] = assignExp.right;
+        }
+
     }
     else {
         name = assignExp.left.name;
@@ -200,13 +211,18 @@ function memberExpSub(expr, env, ifEval){
     let name=expr.object.name;
     if(ifEval) {
         expr.property = substituteEval(expr.property, env);
+
+
     }
     else
         expr.property = substitute(expr.property, env);
     if (!isFuncArgument(name)|| ifEval) {
-        let tmp= env[name];
-        return tmp[expr.property.value];
+        let name1= expr.object.name;
+        let tmp= (env[name1]).elements;
+        let tmp1=  tmp[expr.property.value];
+        return tmp1;
     }
+
     else {
         return expr;
     }
@@ -260,6 +276,8 @@ function parseGlobal(global, env){
     return global;
 }
 function parseProgram(program, argsVals,env){
+    colors=[];
+    colorIndx=0;
     argsValues= argsVals.body[0].expression.expressions; // returns as Expression statement
     for(let i=0; i<program.body.length; i++){
         if(program.body[i].type==='VariableDeclaration')
