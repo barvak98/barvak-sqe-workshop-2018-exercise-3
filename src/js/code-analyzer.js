@@ -16,7 +16,6 @@ function parseProgram(codeToParse, code, argsVals,env) {
 }
 function parseGlobals(program){
     for (let i = 0; i < program.body.length; i++) {
-        let currNode = [];
         if (program.body[i].type === 'VariableDeclaration') {
             if(nodes.isEmpty()|| nodes[nodes.length-1].type!== 'LetAssExp') {
                 let node= {type: 'LetAssExp', array: [escodegen.generate(program[i])], index: nodeIndex};
@@ -45,7 +44,6 @@ function parseBody(program){
             parseBody(program[i].body.body);
         }
         else if(isCond(program[i])){
-            addNode(currNode);
             parseCond(program[i]);
             currNode=[];
         }
@@ -53,27 +51,23 @@ function parseBody(program){
 }
 
 function isPrimitive(program) {
-    if((program.type === 'VariableDeclaration')||(program.type === 'AssignmentExpression')|| (program.type === 'ExpressionStatement')){
-        return true;
-    }
-    return false;
+    return (program.type === 'VariableDeclaration') || (program.type === 'AssignmentExpression') || (program.type === 'ExpressionStatement');
+
 }
 function parsePrimitive(program){
     if(nodes.isEmpty()|| nodes[nodes.length-1].type!== 'LetAssExp') {
-        let node= {type: 'LetAssExp', array: [escodegen.generate(program[i])], index: nodeIndex};
+        let node= {type: 'LetAssExp', array: [escodegen.generate(program)], index: nodeIndex};
         nodes.push(node);
         nodeIndex++;
         addEdge(node);
     }
     else
-        nodes[nodes.length-1].array.push(escodegen.generate(program[i]));
+        nodes[nodes.length-1].array.push(escodegen.generate(program));
 
 }
 function isCond(program){
-    if(program.type === 'IfStatement' || program.type === 'WhileStatement'){
-        return true;
-    }
-    return false;
+    return program.type === 'IfStatement' || program.type === 'WhileStatement';
+
 }
 function parseCond(program){
     if(program.type === 'IfStatement')
