@@ -3,9 +3,11 @@ import * as escodegen from 'escodegen';
 
 
 let colors =[];
-let colorIndx =0;
+let colorIndx = 0;
 let params=[];
 let argsValues=[];
+
+
 
 const parseCode = (codeToParse) => {
     return esprima.parseScript(codeToParse);
