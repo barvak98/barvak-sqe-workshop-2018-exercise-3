@@ -1,9 +1,8 @@
 import $ from 'jquery';
 import {parseCode , parseProgram} from './code-analyzer';
 import * as esprima from 'esprima';
-const flowchart= require('flowchart.js');
 
-
+import flowchart from 'flowchart.js';
 
 if(typeof document !== 'undefined')
     $(document).ready(function () {
