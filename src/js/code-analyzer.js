@@ -69,6 +69,7 @@ function isCond(program){
     return program.type === 'IfStatement' || program.type === 'WhileStatement';
 
 }
+
 function parseCond(program){
     if(program.type === 'IfStatement')
         parseIfExp(program);
