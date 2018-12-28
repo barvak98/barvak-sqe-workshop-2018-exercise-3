@@ -64,8 +64,7 @@ function parseVariableDeclaration(vardecl, env) {
                 right[i]= substitute(right[i], env);
             }
             vardecl.declarations[i].init.elements = right;
-            let tmp = JSON.parse(JSON.stringify(vardecl.declarations[i].init));
-            env[vardecl.declarations[i].id.name] = tmp;
+            env[vardecl.declarations[i].id.name] = JSON.parse(JSON.stringify(vardecl.declarations[i].init));
         }
         else {
             let right = substitute(vardecl.declarations[i].init, env);
@@ -115,24 +114,31 @@ function parseIfStatement(bodyElement, isElseIf, env) {
 function ifHelper(bodyElement, isElseIf, newEnv) {
     if (bodyElement.consequent.type === 'BlockStatement') {
         bodyElement.consequent.body = parseBody(bodyElement.consequent.body, newEnv);
-        let z = bodyElement.consequent.body.filter(exp => exp);         bodyElement.consequent.body = z;
+        if (bodyElement.consequent.body != null) {
+            bodyElement.consequent.body = bodyElement.consequent.body.filter(exp => exp);
+        }
     }
     else
         bodyElement.consequent = parseBody([bodyElement.consequent], newEnv)[0];
+    return ifAlt(bodyElement,isElseIf, newEnv);
+}
+
+function ifAlt(bodyElement, isElseIf, newEnv) {
     if (bodyElement.alternate !== null) {
         let typeAlt = bodyElement.alternate.type;
         if (typeAlt === 'IfStatement')
             bodyElement.alternate = parseIfStatement(bodyElement.alternate, true, newEnv);
         else {
-            if(bodyElement.alternate.type=== 'BlockStatement')
+            if (bodyElement.alternate.type === 'BlockStatement')
                 bodyElement.alternate.body = parseBody(bodyElement.alternate.body, newEnv);
             else
                 bodyElement.alternate.body = parseBody([bodyElement.alternate], newEnv);
-            let k = bodyElement.alternate.body.filter(exp => exp);
-            bodyElement.alternate.body = k;         } }
+            // let k = bodyElement.alternate.body.filter(exp => exp);
+            // bodyElement.alternate.body = k;
+        }
+    }
     return bodyElement;
 }
-
 function parseExpressionStatement(bodyElement, env){
     let k =parseBody([bodyElement.expression], env);
     if(k===null)
@@ -177,7 +183,7 @@ function AssignmentLeftMemberExp(assignExp, env, name){
 
 }
 function AssignmentLeftNormal (assignExp, env, name){
-    if(assignExp.right.type =='MemberExpression'|| (assignExp.right.type=='Identifier'&& isFuncArgument(assignExp.right.name)  &&env[assignExp.right.name].type=='ArrayExpression' ))
+    if(assignExp.right.type ==='MemberExpression'|| (assignExp.right.type==='Identifier'&& isFuncArgument(assignExp.right.name)  &&env[assignExp.right.name].type==='ArrayExpression' ))
     {
         assignExp.right = substituteEval(assignExp.right, env);
     }
@@ -234,8 +240,7 @@ function memberExpSub(expr, env, ifEval){
     if (!isFuncArgument(name)|| ifEval) {
         let name1= expr.object.name;
         let tmp= (env[name1]).elements;
-        let tmp1=  tmp[expr.property.value];
-        return tmp1;
+        return tmp[expr.property.value];
     }
 
     else {
@@ -257,9 +262,8 @@ function BinaryExpSub( expr, env, IfEval){
 
 function isFuncArgument(name) {
     let exist = params.indexOf(name);
-    if(exist===-1)
-        return false;
-    return true;
+    return exist !== -1;
+
 }
 
 function identifierSub (expr, env, isEval){
@@ -321,7 +325,7 @@ function parseBody ( program , env ) {
     for (let i = 0; i < program.length; i++) {
         program[i]=(parsePrimitiveExps(program[i], env));
     }
-    if(program.length==1&& program[0]===null)
+    if(program.length===1&& program[0]===null)
         program=null;
     return program;
 }

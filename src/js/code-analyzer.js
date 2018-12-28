@@ -1,7 +1,7 @@
 import {evalProgram} from './evalJson';
 import * as esprima from 'esprima';
 import * as escodegen from 'escodegen';
-export {parseProgram};
+export {parseProgram, parseCode};
 
 let nodes =[];
 let edges =[];
@@ -10,22 +10,31 @@ let colors =[];
 let condIndex =0;
 let ifCounter =0;
 
+const parseCode = (codeToParse) => {
+    return esprima.parseScript(codeToParse);
+};
 function parseProgram(codeToParse, code, argsVals,env) {
     let program =  esprima.parseScript(codeToParse);
-    colors = evalProgram(code, argsVals, env);
+    let c = evalProgram(code, argsVals, env);
+    parseColors(c);
     parseGlobals(program);
+}
+function parseColors(c){
+    for(let i=0; i<c.length; i++){
+        colors[i] = c[i] === 'green';
+    }
 }
 function parseGlobals(program) {
     for (let i = 0; i < program.body.length; i++) {
         if (program.body[i].type === 'VariableDeclaration') {
             if (nodes.isEmpty() || nodes[nodes.length - 1].type !== 'LetAssExp') {
-                let node = {type: 'LetAssExp', array: [escodegen.generate(program[i])], index: nodeIndex, color: true};
+                let node = {type: 'LetAssExp', array: [escodegen.generate(program.body[i])], index: nodeIndex, color: true};
                 nodes.push(node);
                 nodeIndex++;
                 addEdge(node);
             }
             else
-                nodes[nodes.length - 1].array.push(escodegen.generate(program[i]));
+                nodes[nodes.length - 1].array.push(escodegen.generate(program.body[i]));
         }
 
         else {
@@ -36,7 +45,7 @@ function parseGlobals(program) {
 }
 
 function parseBody(program, color){
-    for (let i = 0; i < program.body.length; i++) {
+    for (let i = 0; i < program.length; i++) {
         if(isPrimitive(program[i])) {
             parsePrimitive(program[i], color);
         }
@@ -55,7 +64,7 @@ function isPrimitive(program) {
 
 }
 function parsePrimitive(program, color){
-    if(nodes.isEmpty()|| nodes[nodes.length-1].type!== 'LetAssExp') {
+    if(nodes.length===0|| nodes[nodes.length-1].type!== 'LetAssExp') {
         let node= {type: 'LetAssExp', array: [escodegen.generate(program)], index: nodeIndex, color: color};
         nodes.push(node);
         nodeIndex++;
@@ -78,13 +87,15 @@ function parseCond(program, color){
 
 }
 function parseWhileExp(program, color) {
-    let whileColor = color[condIndex];
+    let whileColor = colors[condIndex];
     condIndex++;
     let nullNode = {type: 'NullNode', index: nodeIndex, color:color};
     addEdge(nullNode);
     nodes.push(nullNode);
     nodeIndex++;
-    let whileNode = {type: 'WhileNode', test: esprima.parseScript(program.test), index: nodeIndex, color: color};
+    let test = program.test;
+    let test1 =  escodegen.generate(test);
+    let whileNode = {type: 'WhileNode', test: test1, index: nodeIndex, color: color};
     nodes.push(whileNode);
     nodeIndex++;
     addEdge(whileNode);
@@ -122,7 +133,7 @@ function connectToDummy(){
     nodeIndex++;
 }
 function parseElseIfExp(program, prevIfNode){
-    let ifNode= addElseIfNode(program.test, prevIfNode);
+    let ifNode= addElseIfNode(program, prevIfNode);
     parseBlockStatement(program.consequent);
     let lastNodeConsIndex = nodeIndex;
     if (program.alternate !== null) {
@@ -138,22 +149,23 @@ function parseElseIfExp(program, prevIfNode){
 
 }
 function addIfNode(program, color){
-    let ifNode = {type: 'IfNode', test: esprima.parseScript(program.test), index: nodeIndex, color: color};
+    let ifNode = {type: 'IfNode', test: escodegen.generate(program.test), index: nodeIndex, color: color};
     nodes.push(ifNode);
     nodeIndex++;
     addEdge(ifNode);
     return ifNode;
 }
 function addElseIfNode(program, prevIfNode, color){
-    let ifNode = {type: 'IfNode', test: esprima.parseScript(program.test), index: nodeIndex, color: color};
+    let ifNode = {type: 'IfNode', test: escodegen.generate(program.test), index: nodeIndex, color: color};
     nodes.push(ifNode);
     edges.push({from:prevIfNode.index, to: nodeIndex});
     nodeIndex++;
     return ifNode;
 }
 function addEdge(node){
-    if (!edges.isEmpty) {
-        edges[edges.length - 1].to(node.index);
+    if (edges.length!==0) {
+        let e = edges[edges.length - 1];
+        e.to=(node.index);
         edges.push({from:node.index, to: undefined});
     }
     else {
