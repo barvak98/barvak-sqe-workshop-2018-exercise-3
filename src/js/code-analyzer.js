@@ -24,6 +24,9 @@ function parseProgram(codeToParse, code, argsVals,env) {
     let c = evalProgram(code, argsVals, env);
     parseColors(c);
     parseGlobals(program);
+    let str =makeNodesString();
+    str+= makeEdgesString();
+    return str;
 }
 function parseColors(c){
     for(let i=0; i<c.length; i++){
@@ -71,7 +74,7 @@ function funcAndReturn(program, color){
     if(program.type ==='FunctionDeclaration')
         parseBody(program.body.body, color);
     else
-        parseReturnStatement();
+        parseReturnStatement(program);
 }
 function isPrimitive(program) {
     return (program.type === 'VariableDeclaration') || (program.type === 'AssignmentExpression') || (program.type === 'ExpressionStatement');
@@ -226,10 +229,83 @@ function parseBlockStatement(program, color){
     }
 }
 
-function parseReturnStatement(){
-    let returnNode = {type: 'ReturnNode', index: nodeIndex, colors: true};
+function parseReturnStatement(program){
+    let returnNode = {type: 'ReturnNode',value: 'return '+ escodegen.generate(program.argument), index: nodeIndex, colors: true};
     nodes.push(returnNode);
     nodeIndex++;
     addEdge(returnNode);
     edges.pop();
+}
+
+
+function makeNodesString(){
+    let numOfDummies=0;
+    let str ='';
+    for(let i=0; i<nodes.length; i++){
+        if(isOperation(nodes[i]))
+            str += DealWithOperation(nodes[i], numOfDummies);
+        else if (isCondition(nodes[i]))
+            str+= DealWithCondition(nodes[i], numOfDummies);
+        else if(nodes[i].type==='DummyNode') {
+            numOfDummies++;
+            str += 'operation: \n';
+        }
+    }
+    return str;
+}
+
+function isOperation(node){
+    return node.type === 'NullNode' || node.type === 'ReturnNode' || node.type === 'LetAssExp';
+}
+function isCondition(node){
+    return (node.type === 'IfNode'|| node.type === 'WhileNode' );
+}
+
+/**
+ * @return {string}
+ */
+function DealWithCondition(node, numOfDummies) {
+    let str = ('condition: ' );
+    str+='#'+node.index+1-numOfDummies+'\n';
+    str+=  node.test + '\n';
+    return str;
+}
+
+/**
+ * @return {string}
+ */
+function DealWithOperation(node, numOfDummies){
+    let str ='';
+    if (node.type ==='NullNode') {
+        str+='#'+node.index+1-numOfDummies+'\n';
+        str += 'operation: NULL \n';
+    }
+    if(node.type ==='ReturnNode')
+    {
+        str+='#'+node.index+1-numOfDummies+'\n';
+        str+='operation: '+node.value +'\n';
+    }
+    else
+        return makeLetString(nodes, numOfDummies);
+    return str;
+}
+
+function makeLetString(node, numOfDummies){
+    let str = 'operation: ';
+    str+='#'+node.index+1-numOfDummies;
+    let arr = node.array;
+    for(let i=0; i<arr.length; i++){
+        str += arr[i]+ '\n';
+    }
+    return str;
+}
+
+function makeEdgesString(){
+    let str ='';
+    for(let i=0; i<edges.length; i++){
+        let from = edges[i].from;
+        let to = edges[i].to;
+        if(to === undefined);
+        else if()
+    }
 }
