@@ -1,4 +1,3 @@
-import * as esprima from 'esprima';
 import * as escodegen from 'escodegen';
 
 
@@ -7,13 +6,7 @@ let colorIndx = 0;
 let params=[];
 let argsValues=[];
 
-
-
-const parseCode = (codeToParse) => {
-    return esprima.parseScript(codeToParse);
-};
-
-export {parseCode, evalProgram };
+export { evalProgram };
 
 function parseFunctionDeclaration(func , env) {
     parseFunctionParams(func.params, env);

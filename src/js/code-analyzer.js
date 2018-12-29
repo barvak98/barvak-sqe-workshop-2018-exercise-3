@@ -3,17 +3,23 @@ import * as esprima from 'esprima';
 import * as escodegen from 'escodegen';
 export {parseProgram, parseCode};
 
-let nodes =[];
-let edges =[];
-let nodeIndex =0;
-let colors =[];
-let condIndex =0;
-let ifCounter =0;
+let nodes;
+let edges;
+let nodeIndex;
+let colors;
+let condIndex;
+let ifCounter;
 
 const parseCode = (codeToParse) => {
     return esprima.parseScript(codeToParse);
 };
 function parseProgram(codeToParse, code, argsVals,env) {
+    nodes=[];
+    edges=[];
+    colors=[];
+    nodeIndex=0;
+    condIndex=0;
+    ifCounter=0;
     let program =  esprima.parseScript(codeToParse);
     let c = evalProgram(code, argsVals, env);
     parseColors(c);
@@ -21,7 +27,8 @@ function parseProgram(codeToParse, code, argsVals,env) {
 }
 function parseColors(c){
     for(let i=0; i<c.length; i++){
-        colors[i] = c[i] === 'green';
+        let v = c[i] === 'green';
+        colors.push(v);
     }
 }
 function parseGlobals(program) {
@@ -43,22 +50,29 @@ function parseGlobals(program) {
     }
 
 }
-
+function checkFuncOrReturn(program){
+    return (program.type === 'FunctionDeclaration' || program.type === 'ReturnStatement');
+}
 function parseBody(program, color){
     for (let i = 0; i < program.length; i++) {
         if(isPrimitive(program[i])) {
             parsePrimitive(program[i], color);
         }
-        else if(program[i].type === 'FunctionDeclaration')
+        else if(checkFuncOrReturn(program[i]))
         {
-            parseBody(program[i].body.body, color);
+            funcAndReturn(program[i], color);
         }
         else if(isCond(program[i])){
             parseCond(program[i], color);
         }
     }
 }
-
+function funcAndReturn(program, color){
+    if(program.type ==='FunctionDeclaration')
+        parseBody(program.body.body, color);
+    else
+        parseReturnStatement();
+}
 function isPrimitive(program) {
     return (program.type === 'VariableDeclaration') || (program.type === 'AssignmentExpression') || (program.type === 'ExpressionStatement');
 
@@ -78,7 +92,6 @@ function isCond(program){
     return program.type === 'IfStatement' || program.type === 'WhileStatement';
 
 }
-
 function parseCond(program, color){
     if(program.type === 'IfStatement')
         parseIfExp(program, color);
@@ -104,11 +117,12 @@ function parseWhileExp(program, color) {
     edges.push({from: whileNode.index, to: undefined});
 }
 function parseIfExp(program, color) {
+    ifCounter =1;
     let ifColor = colors[condIndex];
     condIndex++;
     let ifNode = addIfNode(program, color);
     parseBlockStatement(program.consequent, ifColor && color);
-    let lastNodeConsIndex = nodeIndex;
+    let lastNodeConsIndex = edges.length-1;          //// -1 ???????????????????????????????
     if(program.alternate!=null) {
         checkAlt(program, ifNode, color, ifColor, lastNodeConsIndex);
     }
@@ -118,31 +132,62 @@ function checkAlt(program, ifNode, color, ifColor, lastNodeConsIndex){
     if ( program.alternate.type === 'IfStatement')
         parseElseIfExp(program.alternate, ifNode, color && !ifColor);
     else {
-        parseBlockStatement(program.alternate, color && !ifColor);
-        edges[lastNodeConsIndex].to = undefined;
+        parseElseExp(program.alternate, color && !ifColor);
+        edges[lastNodeConsIndex-1].to = undefined;
         connectToDummy();
     }
 }
+
+function parseElseExp(program, ifNode, color){
+    edges.push({from: ifNode.index, to: nodeIndex});
+    if(checkElseBlock(program))
+    {
+        let node = {type: 'LetAssExp', array: [escodegen.generate(program.body[0])], index: nodeIndex, color: color};
+        nodes.push(node);  nodeIndex++;  addEdge(node);
+        let rest = program.body.slice(1);
+        if(rest.length>0)
+            parseBlockStatement(rest);
+    }
+    else if(program.type === 'VariableDeclaration' || program.type ==='ExpressionStatement'){
+        let node = {type: 'LetAssExp', array: [escodegen.generate(program.body[0])], index: nodeIndex, color: color};
+        nodes.push(node);
+        edges.push({from:nodeIndex, to: undefined});
+        nodeIndex++;
+    }
+    else{
+        parseBlockStatement(program,color);
+    }
+}
+function checkElseBlock(program){
+    return (program.type === 'BlockStatement' && program.body[0].type ==='VariableDeclaration' || program.body[0].type ==='ExpressionStatement');
+}
 function connectToDummy(){
-    for(let i=0; i<ifCounter; i++){
-        if(edges[edges.length-1-i].to=== undefined)
-            edges[i].to = nodeIndex;
+    for(let i=0; i<edges.length && ifCounter>0; i++){
+        if(edges[edges.length-1-i].to=== undefined) {
+            edges[edges.length-1-i].to = nodeIndex;
+            ifCounter--;
+        }
     }
     let dummyNode = {type: 'DummyNode', index: nodeIndex};
     nodes.push(dummyNode);
+    edges.push({from:nodeIndex, to: undefined});
     nodeIndex++;
 }
-function parseElseIfExp(program, prevIfNode){
-    let ifNode= addElseIfNode(program, prevIfNode);
+function parseElseIfExp(program, prevIfNode, color){
+    let ifColor = colors[condIndex];
+    condIndex++;
+    let ifNode= addElseIfNode(program, prevIfNode, color);
+    addEdge(ifNode); ///////////////////////////////////////////////////// ?????????????
     parseBlockStatement(program.consequent);
-    let lastNodeConsIndex = nodeIndex;
+    let lastNodeConsIndex = edges.length -1;
     if (program.alternate !== null) {
+        ifCounter++;
         let typeAlt = program.alternate.type;
         if (typeAlt === 'IfStatement')
             parseElseIfExp(program.alternate,ifNode);
         else {
-            parseBlockStatement(program.alternate);
-            edges[lastNodeConsIndex].to=undefined;
+            parseElseExp(program.alternate,ifNode, color && !ifColor);
+            edges[lastNodeConsIndex].to = undefined;
             connectToDummy();
         }
     }
@@ -179,4 +224,12 @@ function parseBlockStatement(program, color){
     else {
         parseBody(program.body, color);
     }
+}
+
+function parseReturnStatement(){
+    let returnNode = {type: 'ReturnNode', index: nodeIndex, colors: true};
+    nodes.push(returnNode);
+    nodeIndex++;
+    addEdge(returnNode);
+    edges.pop();
 }
