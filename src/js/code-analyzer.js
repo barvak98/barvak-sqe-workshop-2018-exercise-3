@@ -1,6 +1,7 @@
 import {evalProgram} from './evalJson';
 import * as esprima from 'esprima';
 import * as escodegen from 'escodegen';
+
 export {parseProgram, parseCode};
 
 let nodes;
@@ -117,7 +118,7 @@ function parseWhileExp(program, color) {
     updateLastEdgeToConsq();
     parseBlockStatement(program.body, color&& whileColor);
     edges[edges.length - 1].to = nullNode.index;
-    edges.push({from: whileNode.index, to: undefined, isConsq:false});
+    edges.push({from: whileNode.index, to: undefined, isConsq:false, firstIsDummy:false, lastIsDummy: false});
 }
 function parseIfExp(program, color) {
     ifCounter =1;
@@ -126,24 +127,25 @@ function parseIfExp(program, color) {
     let ifNode = addIfNode(program, color);
     updateLastEdgeToConsq();
     parseBlockStatement(program.consequent, ifColor && color);
-    let lastNodeConsIndex = edges.length-1;          //// -1 ???????????????????????????????
+    let lastNodeConsIndex = edges.length-1;
     if(program.alternate!=null) {
         checkAlt(program, ifNode, color, ifColor, lastNodeConsIndex);
     }
 }
 function checkAlt(program, ifNode, color, ifColor, lastNodeConsIndex){
     ifCounter++;
-    if ( program.alternate.type === 'IfStatement')
-        parseElseIfExp(program.alternate, ifNode, color && !ifColor);
-    else {
+    if (program.alternate.type !== 'IfStatement') {
         parseElseExp(program.alternate, color && !ifColor);
-        edges[lastNodeConsIndex-1].to = undefined;
+        edges[lastNodeConsIndex - 1].to = undefined;
         connectToDummy();
+    }
+    else {
+        parseElseIfExp(program.alternate, ifNode, color && !ifColor);
     }
 }
 
 function parseElseExp(program, ifNode, color){
-    edges.push({from: ifNode.index, to: nodeIndex, isConsq:false});
+    edges.push({from: ifNode.index, to: nodeIndex, isConsq:false,firstIsDummy:false, lastIsDummy:false});
     if(checkElseBlock(program))
     {
         let node = {type: 'LetAssExp', array: [escodegen.generate(program.body[0])], index: nodeIndex, color: color};
@@ -155,7 +157,7 @@ function parseElseExp(program, ifNode, color){
     else if(program.type === 'VariableDeclaration' || program.type ==='ExpressionStatement'){
         let node = {type: 'LetAssExp', array: [escodegen.generate(program.body[0])], index: nodeIndex, color: color};
         nodes.push(node);
-        edges.push({from:nodeIndex, to: undefined, isConsq:false});
+        edges.push({from:nodeIndex, to: undefined, isConsq:false, firstIsDummy:false, lastIsDummy:false});
         nodeIndex++;
     }
     else{
@@ -169,12 +171,13 @@ function connectToDummy(){
     for(let i=0; i<edges.length && ifCounter>0; i++){
         if(edges[edges.length-1-i].to=== undefined) {
             edges[edges.length-1-i].to = nodeIndex;
+            edges.lastIsDummy=true;
             ifCounter--;
         }
     }
     let dummyNode = {type: 'DummyNode', index: nodeIndex};
     nodes.push(dummyNode);
-    edges.push({from:nodeIndex, to: undefined, isConsq: false});
+    edges.push({from:nodeIndex, to: undefined, isConsq: false, firstIsDummy:true,lastIsDummy:false});
     nodeIndex++;
 }
 function updateLastEdgeToConsq(){
@@ -187,7 +190,7 @@ function parseElseIfExp(program, prevIfNode, color){
     let ifNode= addElseIfNode(program, prevIfNode, color);
     addEdge(ifNode);
     updateLastEdgeToConsq();
-    parseBlockStatement(program.consequent);
+    parseBlockStatement(program.consequent,color& ifColor);
     let lastNodeConsIndex = edges.length -1;
     if (program.alternate !== null) {
         ifCounter++;
@@ -200,7 +203,6 @@ function parseElseIfExp(program, prevIfNode, color){
             connectToDummy();
         }
     }
-
 }
 function addIfNode(program, color){
     let ifNode = {type: 'IfNode', test: escodegen.generate(program.test), index: nodeIndex, color: color};
@@ -212,7 +214,7 @@ function addIfNode(program, color){
 function addElseIfNode(program, prevIfNode, color){
     let ifNode = {type: 'IfNode', test: escodegen.generate(program.test), index: nodeIndex, color: color};
     nodes.push(ifNode);
-    edges.push({from:prevIfNode.index, to: nodeIndex, isConsq:false});
+    edges.push({from:prevIfNode.index, to: nodeIndex, isConsq:false, lastIsDummy:false, firstIsDummy:false});
     nodeIndex++;
     return ifNode;
 }
@@ -220,10 +222,10 @@ function addEdge(node){
     if (edges.length!==0) {
         let e = edges[edges.length - 1];
         e.to=(node.index);
-        edges.push({from:node.index, to: undefined, isConsq: false});
+        edges.push({from:node.index, to: undefined, isConsq: false, firstIsDummy:false, lastIsDummy:false});
     }
     else {
-        edges.push({from: node.index, to: undefined, isConsq: false});
+        edges.push({from: node.index, to: undefined, isConsq: false, firstIsDummy:false, lastIsDummy:false});
     }
 }
 
@@ -236,7 +238,7 @@ function parseBlockStatement(program, color){
 }
 
 function parseReturnStatement(program){
-    let returnNode = {type: 'ReturnNode',value: 'return '+ escodegen.generate(program.argument), index: nodeIndex, colors: true};
+    let returnNode = {type: 'ReturnNode',value: 'return '+ escodegen.generate(program.argument), index: nodeIndex, color: true};
     nodes.push(returnNode);
     nodeIndex++;
     addEdge(returnNode);
@@ -244,7 +246,8 @@ function parseReturnStatement(program){
 }
 
 function makeNodesString(){
-    let numOfDummies=0;
+    let numOfDummies;
+    numOfDummies = 0;
     let str ='';
     for(let i=0; i<nodes.length; i++){
         if(isOperation(nodes[i]))
@@ -252,8 +255,9 @@ function makeNodesString(){
         else if (isCondition(nodes[i]))
             str+= DealWithCondition(nodes[i], numOfDummies);
         else if(nodes[i].type==='DummyNode') {
+            str += 'dummy'+numOfDummies+'=>operation: \n';
             numOfDummies++;
-            str += 'operation: \n';
+            str+= checkColor(nodes[i]);
         }
     }
     return str;
@@ -270,8 +274,10 @@ function isCondition(node){
  * @return {string}
  */
 function DealWithCondition(node, numOfDummies) {
-    let str = 'node'+(node.index+1-numOfDummies)+ '=>'+'condition: ';
-    str+=  node.test + '\n';
+    let nodeNumber=(node.index+1-numOfDummies);
+    let str = 'node'+nodeNumber+ '=>condition: ';
+    str+= '#'+nodeNumber+'\n'+ node.test;
+    str+= checkColor(node);
     return str;
 }
 
@@ -282,59 +288,89 @@ function DealWithOperation(node, numOfDummies){
     let str ='';
     let nodeNumber =  node.index+1-numOfDummies;
     if (node.type ==='NullNode') {
-        str += 'node'+nodeNumber +'=>operation: ' +'null \n';
+        str += 'node'+nodeNumber +'=>operation: ' +'#'+nodeNumber+'\n'+'null';
     }
     else if(node.type ==='ReturnNode')
     {
-        str+='node'+ nodeNumber+'=>operation: '+node.value +'\n';
+        str+='node'+ nodeNumber+'=>operation: ' +'#'+nodeNumber+'\n'+node.value;
     }
     else
         return makeLetString(node, numOfDummies);
+    str += checkColor(node);
     return str;
 }
 
+function checkColor(node){
+    if(node.color)
+        return ' |approved\n';
+    else
+        return ' |rejected\n';
+}
+
 function makeLetString(node, numOfDummies){
-    let str = 'node'+(node.index+1-numOfDummies)+ '=>operation: ';
+    let nodeNumber =  node.index+1-numOfDummies;
+    let str = 'node'+(node.index+1-numOfDummies)+ '=>operation: ' +'#'+nodeNumber+'\n';
     let arr = node.array;
-    for(let i=0; i<arr.length; i++){
+    for(let i=0; i<arr.length-1; i++){
         str += arr[i]+ '\n';
     }
+    str+= arr[arr.length-1];
+    str+= checkColor(node);
     return str;
 }
 
 function makeEdgesString(){
+    let numOfDummy =0;
     let s ='';
     for(let i=0; i<edges.length; i++){
         if(edges[i].to === undefined)
             break;
-        else if(checkIfConsq(edges[i]))
-            s += 'node'+(edges[i].from+1) + '(yes)->' + 'node'+(edges[i].to+1) +'\n';
-        else if(checkIfAlt(edges[i])){
-            s += 'node'+(edges[i].from+1) + '(no)->'+'node'+(edges[i].to+1)+'\n';
-        }
-        else {
-            s += 'node'+(edges[i].from +1)+ '->' + 'node'+(edges[i].to+1) +'\n';
-        }
+        s+=dealWithIfConsq(edges[i]);
+        s+=dealWithIfAlt(edges[i]);
+        let arr=dealWithDummy(edges[i], numOfDummy);
+        s+= arr[0];
+        numOfDummy=arr[1];
     }
     return s;
 }
-function checkIfConsq(edge){
+
+function dealWithDummy(edge, numOfDummy){
+    let s ='';
+    if(edge.firstIsDummy)
+    {
+        s+='dummy'+numOfDummy+'->';
+        numOfDummy++;
+    }
+    else{
+        s+='node'+(edge.from+1)+'->';
+    }
+    if(edge.lastIsDummy)
+    {
+        s+='dummy' +numOfDummy+'\n';
+        numOfDummy++;
+    }
+    else
+        s+= 'node'+(edge.to+1)+'\n';
+    return [s, numOfDummy];
+}
+
+function dealWithIfConsq(edge){
     let indexFrom= edge.from;
     let fromNode = nodes[indexFrom];
     if( fromNode.type === 'IfNode' || fromNode.type === 'WhileNode')
     {
         if(edge.isConsq)
-            return true;
+            return 'node'+(edge.from+1) + '(yes)->' + 'node'+(edge.to+1) +'\n';
     }
-    return false;
+    return '';
 }
-function checkIfAlt(edge){
+function dealWithIfAlt(edge){
     let indexFrom= edge.from;
     let fromNode = nodes[indexFrom];
     if( fromNode.type === 'IfNode' || fromNode.type === 'WhileNode')
     {
         if(!edge.isConsq)
-            return true;
+            return 'node'+(edge.from+1) + '(no)->'+'node'+(edge.to+1)+'\n';
     }
-    return false;
+    return '';
 }
