@@ -271,7 +271,6 @@ function isCondition(node){
  */
 function DealWithCondition(node, numOfDummies) {
     let str = 'node'+(node.index+1-numOfDummies)+ '=>'+'condition: ';
-    str+='#'+(node.index+1-numOfDummies)+'\n';
     str+=  node.test + '\n';
     return str;
 }
@@ -283,11 +282,11 @@ function DealWithOperation(node, numOfDummies){
     let str ='';
     let nodeNumber =  node.index+1-numOfDummies;
     if (node.type ==='NullNode') {
-        str += 'node'+nodeNumber +'=> operation: ' +'#'+ nodeNumber+'\n' +'null \n';
+        str += 'node'+nodeNumber +'=>operation: ' +'null \n';
     }
     else if(node.type ==='ReturnNode')
     {
-        str+='node'+ nodeNumber+'=> operation: '+'#'+nodeNumber +'\n'+node.value +'\n';
+        str+='node'+ nodeNumber+'=>operation: '+node.value +'\n';
     }
     else
         return makeLetString(node, numOfDummies);
@@ -295,8 +294,7 @@ function DealWithOperation(node, numOfDummies){
 }
 
 function makeLetString(node, numOfDummies){
-    let str = 'node'+(node.index+1-numOfDummies)+ '=>'+'operation: ';
-    str+='#'+(node.index+1-numOfDummies) +'\n';
+    let str = 'node'+(node.index+1-numOfDummies)+ '=>operation: ';
     let arr = node.array;
     for(let i=0; i<arr.length; i++){
         str += arr[i]+ '\n';
