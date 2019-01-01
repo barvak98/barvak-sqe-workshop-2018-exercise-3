@@ -11,7 +11,6 @@ let colors;
 let condIndex;
 let ifCounter;
 let dummyNumber;
-let nodeNum;
 let dummiesToRet;
 const parseCode = (codeToParse) => {
     return esprima.parseScript(codeToParse);
@@ -24,7 +23,6 @@ function parseProgram(codeToParse, code, argsVals,env) {
     condIndex=0;
     ifCounter=0;
     dummyNumber=0;
-    nodeNum=1;
     dummiesToRet=[];
     let program =  esprima.parseScript(codeToParse);
     let c = evalProgram(code, argsVals, env);
@@ -160,8 +158,7 @@ function callElseFunc(program, color, ifColor, ifEdge){
 function parseElseExp(program, color, ifEdge){
     let index = nodeIndex;
     if(checkElseBlock(program))
-    {
-        let node = {type: 'LetAssExp', array: [escodegen.generate(program.body[0])], index: nodeIndex, color: color, name:'node'+(nodeIndex+1-dummyNumber),  number:(nodeIndex+1-dummyNumber)};
+    {let node = {type: 'LetAssExp', array: [escodegen.generate(program.body[0])], index: nodeIndex, color: color, name:'node'+(nodeIndex+1-dummyNumber),  number:(nodeIndex+1-dummyNumber)};
         nodes.push(node);
         nodeIndex++;  edges.push({from: node, to: undefined, isConsq: false});
         let rest = program.body.slice(1);
@@ -170,16 +167,13 @@ function parseElseExp(program, color, ifEdge){
     }
     else if(program.type === 'VariableDeclaration' || program.type ==='ExpressionStatement'){
         let node = {type: 'LetAssExp', array: [escodegen.generate(program.body[0])], index: nodeIndex, color: color, name:'node'+(nodeIndex+1-dummyNumber), number:(nodeIndex+1-dummyNumber)};
-        nodes.push(node);
-        edges.push({from:node, to: undefined, isConsq:false});
+        nodes.push(node);          edges.push({from:node, to: undefined, isConsq:false});
         nodeIndex++;
     }
     else{
         parseBlockStatement(program,color);
     }
-    let n = nodes[index];
-    let e = edges[ifEdge];
-    e.to =n;
+    let n = nodes[index];      let e = edges[ifEdge];      e.to =n;
 }
 function checkElseBlock(program){
     return (program.type === 'BlockStatement' && program.body[0].type ==='VariableDeclaration' || program.body[0].type ==='ExpressionStatement');
@@ -202,10 +196,8 @@ function updateLastEdgeToConsq(){
     e.isConsq=true;
 }
 function parseElseIfExp(program, color, ifEdge){
-    let ifColor = colors[condIndex];
-    condIndex++;
-    let ifNode= addElseIfNode(program, ifEdge, color);
-    addEdge(ifNode);
+    let ifColor = colors[condIndex];      condIndex++;
+    let ifNode= addElseIfNode(program, ifEdge, color);      addEdge(ifNode);
     updateLastEdgeToConsq();
     parseBlockStatement(program.consequent,color& ifColor);
     let lastNodeConsIndex = edges.length -1;
@@ -221,9 +213,6 @@ function parseElseIfExp(program, color, ifEdge){
             edges[lastNodeConsIndex].to = undefined;
             connectToDummy();
         }
-
-        //  checkAlt(program, ifNode, color, ifColor, lastNodeConsIndex, edges.length-1);
-
     }
 }
 function addIfNode(program, color){
