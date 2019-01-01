@@ -31,7 +31,7 @@ function parseProgram(codeToParse, code, argsVals,env) {
     let str =makeNodesString();
     str+='\n';
     str+= makeEdgesString();
-    console.log(str);
+
     return str;
 }
 function parseColors(c){
@@ -43,14 +43,14 @@ function parseColors(c){
 function parseGlobals(program) {
     for (let i = 0; i < program.body.length; i++) {
         if (program.body[i].type === 'VariableDeclaration') {
-            if (nodes.isEmpty() || nodes[nodes.length - 1].type !== 'LetAssExp') {
+            if (nodes.length === 0 || nodes[nodes.length - 1].type !== 'LetAssExp') {
                 let node = {type: 'LetAssExp', array: [escodegen.generate(program.body[i])], index: nodeIndex, color: true, name:'node'+(nodeIndex+1-dummyNumber), number:nodeIndex+1-dummyNumber};
                 nodes.push(node);
                 nodeIndex++;
                 addEdge(node);
             }
-            else
-                nodes[nodes.length - 1].array.push(escodegen.generate(program.body[i]));
+            // else
+            //     nodes[nodes.length - 1].array.push(escodegen.generate(program.body[i]));
         }
 
         else {
@@ -138,17 +138,23 @@ function parseIfExp(program, color) {
         checkAlt(program, ifNode, color, ifColor, lastNodeConsIndex, edges.length-1);
     }
 }
-function checkAlt(program, ifNode, color, ifColor, lastNodeConsIndex, ifEdge){
+function checkAlt(program, ifNode, color, ifColor, lastNodeConsIndex, ifEdge) {
     ifCounter++;
-    if (program.alternate.type!=='BlockStatement'& program.alternate.type !== 'IfStatement') {
-        callElseFunc(program,color,ifColor, ifEdge);
+    if (program.alternate.type !== 'BlockStatement'){
+        if (program.alternate.type !== 'IfStatement')
+            return callElseFunc(program, color, ifColor, ifEdge);
     }
-    if(program.alternate.type==='BlockStatement' && program.alternate.body.type !== 'IfStatement') {
-        callElseFunc(program,color,ifColor, ifEdge);
-    }
-    else {
-        parseElseIfExp(program.alternate, color && !ifColor, ifEdge);
-    }
+    checkAltCont(program, ifNode, color, ifColor, lastNodeConsIndex, ifEdge);
+
+}
+function checkAltCont(program, ifNode, color, ifColor, lastNodeConsIndex, ifEdge){
+    if(program.alternate.type==='BlockStatement')
+        if(program.alternate.body.type !== 'IfStatement') {
+            return callElseFunc(program,color,ifColor, ifEdge);
+        }
+
+    return parseElseIfExp(program.alternate, color && !ifColor, ifEdge);
+
 }
 function callElseFunc(program, color, ifColor, ifEdge){
     parseElseExp(program.alternate, color && !ifColor, ifEdge);
@@ -161,12 +167,12 @@ function parseElseExp(program, color, ifEdge){
     {let node = {type: 'LetAssExp', array: [escodegen.generate(program.body[0])], index: nodeIndex, color: color, name:'node'+(nodeIndex+1-dummyNumber),  number:(nodeIndex+1-dummyNumber)};
         nodes.push(node);
         nodeIndex++;  edges.push({from: node, to: undefined, isConsq: false});
-        let rest = program.body.slice(1);
-        if(rest.length>0)
-            parseBlockStatement(rest, color);
+        //let rest = program.body.slice(1);
+    //     if(rest.length>0)
+    //         parseBlockStatement(rest, color);
     }
     else if(program.type === 'VariableDeclaration' || program.type ==='ExpressionStatement'){
-        let node = {type: 'LetAssExp', array: [escodegen.generate(program.body[0])], index: nodeIndex, color: color, name:'node'+(nodeIndex+1-dummyNumber), number:(nodeIndex+1-dummyNumber)};
+        let node = {type: 'LetAssExp', array: [escodegen.generate(program)], index: nodeIndex, color: color, name:'node'+(nodeIndex+1-dummyNumber), number:(nodeIndex+1-dummyNumber)};
         nodes.push(node);          edges.push({from:node, to: undefined, isConsq:false});
         nodeIndex++;
     }
@@ -176,7 +182,14 @@ function parseElseExp(program, color, ifEdge){
     let n = nodes[index];      let e = edges[ifEdge];      e.to =n;
 }
 function checkElseBlock(program){
-    return (program.type === 'BlockStatement' && program.body[0].type ==='VariableDeclaration' || program.body[0].type ==='ExpressionStatement');
+    if(program.type === 'BlockStatement') {
+        if (program.body[0].type === 'VariableDeclaration')
+            return true;
+    }
+    // else if(program.type ==='BlockStatement')
+    //     if(program.body[0].type ==='ExpressionStatement')
+    //         return true;
+    return false;
 }
 function connectToDummy(){
     let dummyNode = {type: 'DummyNode', index: nodeIndex, dummyNum: dummyNumber, name:'dummy'+dummyNumber, color:true};
@@ -206,13 +219,16 @@ function parseElseIfExp(program, color, ifEdge){
         let typeAlt = program.alternate.type;
         edges.push({from:ifNode, to: undefined, color:color&!ifColor});
         if (typeAlt === 'IfStatement')
-            parseElseIfExp(program.alternate,edges.length-1);
+            parseElseIfExp(program.alternate,edges.length-1, edges.length-1);
         else {
             // edges.push({from:ifNode, to: undefined, color:color&!ifColor});
             parseElseExp(program.alternate, color && !ifColor, edges.length-1);
             edges[lastNodeConsIndex].to = undefined;
             connectToDummy();
         }
+    }
+    else {
+        connectToDummy();
     }
 }
 function addIfNode(program, color){
@@ -353,16 +369,7 @@ function singleEdgeHandler(edge){
         s+=from.name+ '->' + to.name +'\n';
     return s;
 }
-// function isDummy(edge){
-//     return (edge.from.type ==='DummyNode'|| edge.to.type==='DummyNode');
-// }
-// function dealWithDummy(edge){
-//     let s ='';
-//     let from = edge.from;
-//     let to = edge.to;
-//     s=
-//     return s;
-// }
+
 function isConsq(edge){
     let fromNode = edge.from;
     if( fromNode.type === 'IfNode' || fromNode.type === 'WhileNode') {
