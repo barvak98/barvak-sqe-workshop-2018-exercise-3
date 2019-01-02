@@ -4,6 +4,8 @@ import * as escodegen from 'escodegen';
 
 export {parseProgram, parseCode};
 
+
+
 let nodes;
 let edges;
 let nodeIndex;
