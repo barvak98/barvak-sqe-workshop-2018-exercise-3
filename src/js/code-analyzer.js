@@ -49,8 +49,8 @@ function parseGlobals(program) {
                 nodeIndex++;
                 addEdge(node);
             }
-            // else
-            //     nodes[nodes.length - 1].array.push(escodegen.generate(program.body[i]));
+            else
+                nodes[nodes.length - 1].array.push(escodegen.generate(program.body[i]));
         }
 
         else {
@@ -71,9 +71,11 @@ function parseBody(program, color){
         {
             funcAndReturn(program[i], color);
         }
-        else if(isCond(program[i])){
+        else// if(isCond(program[i])){
+        {
             parseCond(program[i], color);
         }
+
     }
 }
 function funcAndReturn(program, color){
@@ -95,10 +97,12 @@ function parsePrimitive(program, color){
     else
         nodes[nodes.length-1].array.push(escodegen.generate(program));
 }
+/*
 function isCond(program){
     return program.type === 'IfStatement' || program.type === 'WhileStatement';
 
 }
+*/
 function parseCond(program, color){
     if(program.type === 'IfStatement')
         parseIfExp(program, color);
@@ -149,9 +153,9 @@ function checkAlt(program, ifNode, color, ifColor, lastNodeConsIndex, ifEdge) {
 }
 function checkAltCont(program, ifNode, color, ifColor, lastNodeConsIndex, ifEdge){
     if(program.alternate.type==='BlockStatement')
-        if(program.alternate.body.type !== 'IfStatement') {
-            return callElseFunc(program,color,ifColor, ifEdge);
-        }
+    //  if(program.alternate.body.type !== 'IfStatement') {
+        return callElseFunc(program,color,ifColor, ifEdge);
+        //}
 
     return parseElseIfExp(program.alternate, color && !ifColor, ifEdge);
 
@@ -224,12 +228,9 @@ function parseElseIfExp(program, color, ifEdge){
             // edges.push({from:ifNode, to: undefined, color:color&!ifColor});
             parseElseExp(program.alternate, color && !ifColor, edges.length-1);
             edges[lastNodeConsIndex].to = undefined;
-            connectToDummy();
-        }
-    }
-    else {
+            connectToDummy();        }}
+    else
         connectToDummy();
-    }
 }
 function addIfNode(program, color){
     let ifNode = {type: 'IfNode', test: escodegen.generate(program.test), index: nodeIndex, color: color, name:'node'+(nodeIndex+1-dummyNumber),  number:(nodeIndex+1-dummyNumber)};
@@ -285,7 +286,8 @@ function makeNodesString(){
         else if (isCondition(nodes[i])) {
             str += DealWithCondition(nodes[i]);
         }
-        else if(nodes[i].type==='DummyNode') {
+        else //if(nodes[i].type==='DummyNode') {
+        {
             str += nodes[i].name+'=>operation: \n';
             str+= checkColor(nodes[i]);
         }
@@ -382,9 +384,6 @@ function isConsq(edge){
 
 function isAlt(edge){
     let fromNode = edge.from;
-    if( fromNode.type === 'IfNode' || fromNode.type === 'WhileNode') {
-        if (!edge.isConsq)
-            return true;
-    }
-    return false;
+    return (fromNode.type === 'IfNode' || fromNode.type === 'WhileNode');
+
 }

@@ -477,67 +477,111 @@ describe('The javascript parser', () => {
 });
 
 
-/*
+
 let parsedCode10 =parseCode('let a=1;\n' +
-    'function test(x,y,z){\n' +
-    'if(x>7){\n' +
-    'x++;\n' +
-    '}\n' +
-    'else if(y>5){\n' +
-    'y++;\n' +
-    '}\n' +
-    'else if(z<1){\n' +
-    'z++;\n' +
-    '}\n' +
-    'return z;\n' +
+    'let b=2;\n' +
+    'function foo(x,y){\n' +
+    'if(a<x)\n' +
+    'x=a;\n' +
+    'else\n' +
+    'y=b;\n' +
+    'return 3;\n' +
     '}');
 
 describe('The javascript parser', () => {
     it('is parsing the10th test correctly', () => {
         assert.deepEqual(
             parseProgram('let a=1;\n' +
-                'function test(x,y,z){\n' +
-                'if(x>7){\n' +
-                'x++;\n' +
-                '}\n' +
-                'else if(y>5){\n' +
-                'y++;\n' +
-                '}\n' +
-                'else if(z<1){\n' +
-                'z++;\n' +
-                '}\n' +
-                'return z;\n' +
-                '}',parsedCode7,  esprima.parseScript('4,5,6'),[] ),
+                'let b=2;\n' +
+                'function foo(x,y){\n' +
+                'if(a<x)\n' +
+                'x=a;\n' +
+                'else\n' +
+                'y=b;\n' +
+                'return 3;\n' +
+                '}',parsedCode10,  esprima.parseScript('1,2'),[] ),
             'node1=>operation: #1\n' +
-            'let a = 1; |approved\n' +
+            'let a = 1;\n' +
+            'let b = 2; |approved\n' +
             'node2=>condition: #2\n' +
-            'x > 7 |approved\n' +
+            'a < x |approved\n' +
             'node3=>operation: #3\n' +
-            'x++; |rejected\n' +
-            'node4=>condition: #4\n' +
-            'y > 5 |approved\n' +
-            'node5=>operation: #5\n' +
-            'y++; |rejected\n' +
-            'node6=>condition: #6\n' +
-            'z < 1 |approved\n' +
-            'node7=>operation: #7\n' +
-            'z++; |rejected\n' +
+            'x = a; |rejected\n' +
+            'node4=>operation: #4\n' +
+            'y = b; |approved\n' +
             'dummy0=>operation: \n' +
             ' |approved\n' +
-            'node8=>operation: #8\n' +
-            'return z |approved\n' +
+            'node5=>operation: #5\n' +
+            'return 3 |approved\n' +
             '\n' +
             'node1->node2\n' +
             'node2(yes)->node3\n' +
             'node3->dummy0\n' +
             'node2(no)->node4\n' +
-            'node4(yes)->node5\n' +
-            'node5->dummy0\n' +
-            'node4(no)->node6\n' +
-            'node6(yes)->node7\n' +
-            'node7->dummy0\n' +
-            'dummy0->node8\n');
+            'node4->dummy0\n' +
+            'dummy0->node5\n');
     });
 });
-*/
+
+
+let parsedCode11 =parseCode('function f (x){\n' +
+    'while(x<10){\n' +
+    'x=x+5;\n' +
+    '}\n' +
+    'return x;\n' +
+    '}');
+
+describe('The javascript parser', () => {
+    it('is parsing the11th test correctly', () => {
+        assert.deepEqual(
+            parseProgram('function f (x){\n' +
+                'while(x<10){\n' +
+                'x=x+5;\n' +
+                '}\n' +
+                'return x;\n' +
+                '}',parsedCode11,  esprima.parseScript('11'),[] ),
+            'node1=>operation: #1\n' +
+            'null |approved\n' +
+            'node2=>condition: #2\n' +
+            'x < 10 |approved\n' +
+            'node3=>operation: #3\n' +
+            'x = x + 5; |rejected\n' +
+            'node4=>operation: #4\n' +
+            'return x |approved\n' +
+            '\n' +
+            'node1->node2\n' +
+            'node2(yes)->node3\n' +
+            'node3->node1\n' +
+            'node2(no)->node4\n');
+    });
+});let parsedCode12 =parseCode('function f (x){\n' +
+    'if(x>1)\n' +
+    '{\n' +
+    'x++;\n' +
+    '}\n' +
+    'return x;\n' +
+    '}');
+
+describe('The javascript parser', () => {
+    it('is parsing the11th test correctly', () => {
+        assert.deepEqual(
+            parseProgram('function f (x){\n' +
+                'if(x>1)\n' +
+                '{\n' +
+                'x++;\n' +
+                '}\n' +
+                'return x;\n' +
+                '}',parsedCode12,  esprima.parseScript('-1'),[] ),
+            'node1=>condition: #1\n' +
+            'x > 1 |approved\n' +
+            'node2=>operation: #2\n' +
+            'x++; |rejected\n' +
+            'node3=>operation: #3\n' +
+            'return x |approved\n' +
+            '\n' +
+            'node1(yes)->node2\n' +
+            'node2->node3\n');
+    });
+});
+
 

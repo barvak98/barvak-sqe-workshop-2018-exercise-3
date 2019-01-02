@@ -147,20 +147,22 @@ function parseReturnStatement(retStatement, env) {
 
 function parseAssignmentExpression(assignExp, env) {
     let name;
-    if (assignExp.left.type === 'MemberExpression') {
+    /* if (assignExp.left.type === 'MemberExpression') {
         name = assignExp.left.object.name;
         AssignmentLeftMemberExp(assignExp, env, name);
     }
     else {
-        name = assignExp.left.name;
-        AssignmentLeftNormal(assignExp, env, name);
-    }
+     */
+    name = assignExp.left.name;
+    AssignmentLeftNormal(assignExp, env, name);
+    // }
     if (isFuncArgument(name))
         return assignExp;
     else
         return null;
 
 }
+/*
 function AssignmentLeftMemberExp(assignExp, env, name){
 
     assignExp.left.property = substitute(assignExp.left.property);
@@ -175,8 +177,9 @@ function AssignmentLeftMemberExp(assignExp, env, name){
     // }
 
 }
+*/
 function AssignmentLeftNormal (assignExp, env, name){
-    if(assignExp.right.type ==='MemberExpression'|| (assignExp.right.type==='Identifier'&& isFuncArgument(assignExp.right.name)  &&env[assignExp.right.name].type==='ArrayExpression' ))
+    if(assignExp.right.type ==='MemberExpression'|| (assignExp.right.type==='Identifier'&& isFuncArgument(assignExp.right.name) ))// &&env[assignExp.right.name].type==='ArrayExpression' ))
     {
         assignExp.right = substituteEval(assignExp.right, env);
     }
@@ -222,7 +225,7 @@ function substituteEval (expr, env){
 
 }
 function memberExpSub(expr, env, ifEval){
-    let name=expr.object.name;
+    //let name=expr.object.name;
     if(ifEval) {
         expr.property = substituteEval(expr.property, env);
 
@@ -230,15 +233,16 @@ function memberExpSub(expr, env, ifEval){
     }
     else
         expr.property = substitute(expr.property, env);
-    if (!isFuncArgument(name)|| ifEval) {
-        let name1= expr.object.name;
-        let tmp= (env[name1]).elements;
-        return tmp[expr.property.value];
-    }
-
+    // if (!isFuncArgument(name)|| ifEval) {
+    let name1= expr.object.name;
+    let tmp= (env[name1]).elements;
+    return tmp[expr.property.value];
+    //}
+/*
     else {
         return expr;
     }
+    */
 }
 
 function BinaryExpSub( expr, env, IfEval){
@@ -261,9 +265,9 @@ function isFuncArgument(name) {
 
 function identifierSub (expr, env, isEval){
     if (!isFuncArgument(expr.name)|| isEval) {
-        if (env[expr.name] !== undefined) {
-            return env[expr.name];
-        }
+        //if (env[expr.name] !== undefined) {
+        return env[expr.name];
+        //}
     }
     else {
         return expr;
@@ -305,7 +309,8 @@ function evalProgram(program, argsVals,env){
 function defArgs (argsVals){
     if (argsVals.body.length===0){
         argsValues=[];
-    }else if(argsVals.body.length===1) {
+    }else //if(argsVals.body.length===1)
+    {
         if (argsVals.body[0].expression.expressions === undefined) {
             argsValues = [argsVals.body[0].expression];
         }

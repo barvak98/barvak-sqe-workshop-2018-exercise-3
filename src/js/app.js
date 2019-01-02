@@ -2,7 +2,7 @@ import $ from 'jquery';
 import {parseCode , parseProgram} from './code-analyzer';
 import * as esprima from 'esprima';
 
- import flowchart from 'flowchart.js';
+import flowchart from 'flowchart.js';
 
 if(typeof document !== 'undefined')
     $(document).ready(function () {
@@ -12,7 +12,6 @@ if(typeof document !== 'undefined')
             let env =[];
             let parsedCode = parseCode(codeToParse);
             let diagramString = parseProgram(codeToParse,parsedCode, esprima.parseScript(argValue),env);
-            console.log(diagramString);
             if(diagramString!== '') {
                 let diagram = flowchart.parse(diagramString);
                 let details = retDiagramDetails();
